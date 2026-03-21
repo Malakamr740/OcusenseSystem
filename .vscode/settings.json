@@ -1,0 +1,6 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "explorer.sortOrder": "filesFirst",
+    "explorer.sortOrderLexicographicOptions": "default",
+    "explorer.sortOrderReverse": false
+}

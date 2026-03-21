@@ -1,0 +1,5 @@
+cd "C:\Users\MalakAmr740\Desktop\Retinitis Pigmentosa Project\RP_Diagnosis_System\backend"
+venv\Scripts\activate
+psql -U postgres -h localhost -p 5432 -d postgres -c "DROP DATABASE IF EXISTS rp_db;"
+psql -U postgres -h localhost -p 5432 -d postgres -c "CREATE DATABASE rp_db;"
+python -m uvicorn app.main:app --reload
