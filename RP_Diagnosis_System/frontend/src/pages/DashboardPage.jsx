@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 
 export default function DashboardPage() {
@@ -10,13 +11,16 @@ export default function DashboardPage() {
       <p>Role: {user?.role}</p>
 
       {user?.role === "patient" && (
-        <ul>
-          <li>Next: My profile</li>
-          <li>Next: Upload case</li>
-          <li>Next: My reports</li>
-          <li>Next: Retargeting</li>
-          <li>Next: Chatbot</li>
-        </ul>
+        <div>
+          <h3>Patient Actions</h3>
+          <ul>
+            <li><Link to="/upload-case">Upload a new case</Link></li>
+            <li><Link to="/my-cases">View my cases</Link></li>
+            <li>Next later: My reports</li>
+            <li>Next later: Retargeting</li>
+            <li>Next later: Chatbot</li>
+          </ul>
+        </div>
       )}
 
       {user?.role === "doctor" && (

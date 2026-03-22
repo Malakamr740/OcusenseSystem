@@ -2,6 +2,9 @@ import { Routes, Route, Link, Navigate } from "react-router";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import UploadCasePage from "./pages/UploadCasePage";
+import MyCasesPage from "./pages/MyCasesPage";
+import CaseDetailsPage from "./pages/CaseDetailsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
 
@@ -19,11 +22,20 @@ export default function App() {
           background: "#f8f9fb",
         }}
       >
-        <div style={{ display: "flex", gap: 16 }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <Link to="/">Home</Link>
+
           {!token && <Link to="/login">Login</Link>}
           {!token && <Link to="/register">Register</Link>}
+
           {token && <Link to="/dashboard">Dashboard</Link>}
+
+          {token && user?.role === "patient" && (
+            <>
+              <Link to="/upload-case">Upload Case</Link>
+              <Link to="/my-cases">My Cases</Link>
+            </>
+          )}
         </div>
 
         <div>
@@ -45,11 +57,39 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginPage />} />
           <Route path="/register" element={token ? <Navigate to="/dashboard" /> : <RegisterPage />} />
+
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/upload-case"
+            element={
+              <ProtectedRoute>
+                <UploadCasePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-cases"
+            element={
+              <ProtectedRoute>
+                <MyCasesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/cases/:caseId"
+            element={
+              <ProtectedRoute>
+                <CaseDetailsPage />
               </ProtectedRoute>
             }
           />
@@ -63,7 +103,7 @@ function Home() {
   return (
     <div>
       <h1>RP Diagnosis System</h1>
-      <p>Frontend foundation is ready. Next we will connect more backend features page by page.</p>
+      <p>Frontend foundation is working. We are now connecting diagnosis flow.</p>
     </div>
   );
 }

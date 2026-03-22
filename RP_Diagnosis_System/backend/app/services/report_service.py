@@ -1,5 +1,6 @@
 import os
 from uuid import uuid4
+from datetime import datetime, timezone
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -30,6 +31,14 @@ REPORTS_DIR = "app/storage/reports"
 
 def _ensure_reports_dir():
     os.makedirs(REPORTS_DIR, exist_ok=True)
+
+
+def _safe_remove_file(file_path: str | None):
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
 
 
 def _fit_image(image_path: str, max_width: float, max_height: float) -> Image | None:
@@ -241,18 +250,55 @@ def generate_case_report(db: Session, case: Case) -> Report:
 
     doc.build(story)
 
+    # -----------------------------
+    # Keep only ONE active report per case
+    # -----------------------------
+    existing_reports = (
+        db.query(Report)
+        .filter(
+            Report.case_id == case.id,
+            Report.report_type == "diagnosis_report",
+            Report.deleted_at.is_(None),
+        )
+        .order_by(Report.created_at.desc())
+        .all()
+    )
+
+    primary_report = existing_reports[0] if existing_reports else None
+    extra_reports = existing_reports[1:] if len(existing_reports) > 1 else []
+
+    # Soft-delete duplicates if they already exist from older testing
+    for old_report in extra_reports:
+        _safe_remove_file(old_report.pdf_path)
+        old_report.deleted_at = datetime.now(timezone.utc)
+
+    metadata = {
+        "patient_profile_id": case.patient_profile_id,
+        "prediction_count": len(predictions),
+        "gradcam_count": len(gradcam_results),
+        "segmentation_count": len(segmentation_results),
+        "hospital_name": app_settings.hospital_name,
+    }
+
+    if primary_report:
+        # refresh the same report instead of creating a new one
+        _safe_remove_file(primary_report.pdf_path)
+
+        primary_report.pdf_path = pdf_path
+        primary_report.report_type = "diagnosis_report"
+        primary_report.status = "generated"
+        primary_report.metadata_json = metadata
+
+        db.commit()
+        db.refresh(primary_report)
+        return primary_report
+
     report = Report(
         case_id=case.id,
         pdf_path=pdf_path,
         report_type="diagnosis_report",
         status="generated",
-        metadata_json={
-            "patient_profile_id": case.patient_profile_id,
-            "prediction_count": len(predictions),
-            "gradcam_count": len(gradcam_results),
-            "segmentation_count": len(segmentation_results),
-            "hospital_name": app_settings.hospital_name,
-        },
+        metadata_json=metadata,
     )
     db.add(report)
     db.commit()
