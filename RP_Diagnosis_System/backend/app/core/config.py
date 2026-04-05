@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     STORAGE_DIR: str = "app/storage/uploads"
 
     # email verification
-    EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int =1440
     APP_FRONTEND_URL: str = "http://localhost:5173"
 
     SMTP_HOST: str = "smtp.gmail.com"

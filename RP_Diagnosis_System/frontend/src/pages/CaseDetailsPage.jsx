@@ -6,7 +6,7 @@ import {
   runDiagnosisPipeline,
   generateCaseReport,
   getCaseReports,
-  downloadReportFile,
+  getReportDownloadUrl,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
 
@@ -23,7 +23,6 @@ export default function CaseDetailsPage() {
   const [runLoading, setRunLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportsLoading, setReportsLoading] = useState(false);
-  const [downloadLoadingId, setDownloadLoadingId] = useState(null);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -38,7 +37,7 @@ export default function CaseDetailsPage() {
         const data = await getCaseById(caseId, token);
         setCaseData(data);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || "Failed to load case");
       } finally {
         setCaseLoading(false);
       }
@@ -54,7 +53,7 @@ export default function CaseDetailsPage() {
       const data = await getCaseResults(caseId, token);
       setResults(data);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to load results");
     } finally {
       setResultsLoading(false);
     }
@@ -67,7 +66,7 @@ export default function CaseDetailsPage() {
       const data = await getCaseReports(caseId, token);
       setReports(data);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to load reports");
     } finally {
       setReportsLoading(false);
     }
@@ -86,7 +85,7 @@ export default function CaseDetailsPage() {
       const refreshedCase = await getCaseById(caseId, token);
       setCaseData(refreshedCase);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Diagnosis failed");
     } finally {
       setRunLoading(false);
     }
@@ -104,31 +103,9 @@ export default function CaseDetailsPage() {
       const loadedReports = await getCaseReports(caseId, token);
       setReports(loadedReports);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Report generation failed");
     } finally {
       setReportLoading(false);
-    }
-  }
-
-  async function handleDownloadReport(reportId) {
-    try {
-      setError("");
-      setDownloadLoadingId(reportId);
-
-      const blob = await downloadReportFile(reportId, token);
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `report_${reportId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setDownloadLoadingId(null);
     }
   }
 
@@ -145,14 +122,7 @@ export default function CaseDetailsPage() {
       {success && <p style={{ color: "green" }}>{success}</p>}
 
       {caseData && (
-        <div
-          style={{
-            border: "1px solid #ddd",
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 20,
-          }}
-        >
+        <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8, marginBottom: 20 }}>
           <p><strong>Case ID:</strong> {caseData.id}</p>
           <p><strong>Status:</strong> {caseData.status}</p>
           <p><strong>Modality:</strong> {caseData.modality}</p>
@@ -281,12 +251,13 @@ export default function CaseDetailsPage() {
               <p><strong>Status:</strong> {report.status}</p>
               <p><strong>Created At:</strong> {report.created_at}</p>
 
-              <button
-                onClick={() => handleDownloadReport(report.id)}
-                disabled={downloadLoadingId === report.id}
+              <a
+                href={getReportDownloadUrl(report.id)}
+                target="_blank"
+                rel="noreferrer"
               >
-                {downloadLoadingId === report.id ? "Downloading..." : "Download Report"}
-              </button>
+                Download Report
+              </a>
             </div>
           ))
         )}

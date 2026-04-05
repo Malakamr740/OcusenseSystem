@@ -24,19 +24,21 @@ export default function DashboardPage() {
       )}
 
       {user?.role === "doctor" && (
-        <ul>
-          <li>Next: View all cases</li>
-          <li>Next: View reports</li>
-          <li>Next: Chatbot</li>
-        </ul>
+        <div>
+          <h3>Doctor Actions</h3>
+          <ul>
+            <li>Next later: View all cases</li>
+            <li>Next later: View all reports</li>
+          </ul>
+        </div>
       )}
 
       {user?.role === "admin" && (
         <ul>
-          <li>Next: Users</li>
-          <li>Next: Audit logs</li>
-          <li>Next: Settings</li>
-          <li>Next: Model registry</li>
+          <li>Next later: Users</li>
+          <li>Next later: Audit logs</li>
+          <li>Next later: Settings</li>
+          <li>Next later: Model registry</li>
         </ul>
       )}
     </div>

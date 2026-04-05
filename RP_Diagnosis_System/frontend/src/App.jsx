@@ -1,6 +1,7 @@
 import { Routes, Route, Link, Navigate } from "react-router";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import DashboardPage from "./pages/DashboardPage";
 import UploadCasePage from "./pages/UploadCasePage";
 import MyCasesPage from "./pages/MyCasesPage";
@@ -55,8 +56,15 @@ export default function App() {
       <div style={{ padding: 24 }}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginPage />} />
-          <Route path="/register" element={token ? <Navigate to="/dashboard" /> : <RegisterPage />} />
+          <Route
+            path="/login"
+            element={token ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+          />
+          <Route
+            path="/register"
+            element={token ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
+          />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
 
           <Route
             path="/dashboard"
@@ -103,7 +111,7 @@ function Home() {
   return (
     <div>
       <h1>RP Diagnosis System</h1>
-      <p>Frontend foundation is working. We are now connecting diagnosis flow.</p>
+      <p>Frontend is connected to the backend step by step.</p>
     </div>
   );
 }

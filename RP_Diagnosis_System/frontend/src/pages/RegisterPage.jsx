@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { registerUser } from "../api";
+import { registerUser, resendVerification } from "../api";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -12,6 +12,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   function updateField(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -21,6 +23,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
+    setShowResend(false);
     setLoading(true);
 
     try {
@@ -33,9 +36,29 @@ export default function RegisterPage() {
         full_name: "",
       });
     } catch (err) {
-      setError(err.message);
+      const message = err.message || "Registration failed";
+      setError(message);
+
+      if (message.toLowerCase().includes("pending verification")) {
+        setShowResend(true);
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setError("");
+    setSuccess("");
+    setResendLoading(true);
+
+    try {
+      const data = await resendVerification(form.email);
+      setSuccess(data.message || "Verification email sent again.");
+    } catch (err) {
+      setError(err.message || "Failed to resend verification email.");
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -82,6 +105,14 @@ export default function RegisterPage() {
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       {success && <p style={{ color: "green" }}>{success}</p>}
+
+      {showResend && (
+        <div style={{ marginTop: 12 }}>
+          <button onClick={handleResend} disabled={resendLoading}>
+            {resendLoading ? "Sending..." : "Resend Verification Email"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

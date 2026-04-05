@@ -5,7 +5,7 @@ from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_user
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import verify_password, create_access_token
 from app.models.user import User
 from app.models.patient import PatientProfile
 from app.models.doctor import DoctorProfile
@@ -21,62 +21,100 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserOut
 
-from app.services.verification_service import (
-    send_verification_email,
-    verify_email_token,
-)
 from app.services.password_reset_service import (
     send_password_reset_email,
     reset_user_password,
 )
 from app.services.google_auth_service import verify_google_credential
 from app.services.audit_service import log_action
+from app.services.pending_registration_service import (
+    create_pending_registration,
+    send_pending_verification_email,
+    get_pending_registration_by_token,
+    get_pending_registration_by_email,
+    refresh_pending_registration_token,
+    delete_pending_registration,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    existing_user = (
-        db.query(User)
-        .filter(User.email == payload.email, User.deleted_at.is_(None))
-        .first()
-    )
-
-    if existing_user:
+    try:
+        pending = create_pending_registration(
+            db,
+            email=payload.email,
+            password=payload.password,
+            role=payload.role,
+            full_name=payload.full_name,
+        )
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail=str(e),
+        )
+
+    send_pending_verification_email(pending)
+
+    return {"message": "Registration started. Please verify your email."}
+
+
+@router.get("/verify-email", response_model=MessageResponse)
+def verify_email(
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    pending = get_pending_registration_by_token(db, token)
+
+    if not pending:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    existing_user = (
+        db.query(User)
+        .filter(User.email == pending.email, User.deleted_at.is_(None))
+        .first()
+    )
+    if existing_user:
+        delete_pending_registration(db, pending)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered",
         )
 
     user = User(
-        email=payload.email,
-        password_hash=hash_password(payload.password),
-        role=payload.role,
+        email=pending.email,
+        password_hash=pending.password_hash,
+        role=pending.role,
         is_active=True,
         auth_provider="local",
-        email_verified_at=None,
+        email_verified_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    if payload.role == "patient":
+    if pending.role == "patient":
         profile = PatientProfile(
             user_id=user.id,
-            full_name=payload.full_name,
+            full_name=pending.full_name,
             patient_code=f"PAT-{user.id:05d}",
         )
         db.add(profile)
 
-    elif payload.role == "doctor":
+    elif pending.role == "doctor":
         profile = DoctorProfile(
             user_id=user.id,
-            full_name=payload.full_name,
+            full_name=pending.full_name,
         )
         db.add(profile)
 
     db.commit()
+
+    delete_pending_registration(db, pending)
 
     log_action(
         db,
@@ -91,21 +129,6 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         },
     )
 
-    send_verification_email(db, user)
-
-    return {"message": "Registration successful. Please verify your email."}
-
-
-@router.get("/verify-email", response_model=MessageResponse)
-def verify_email(token: str = Query(...), db: Session = Depends(get_db)):
-    user = verify_email_token(db, token)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification token",
-        )
-
     log_action(
         db,
         user_id=user.id,
@@ -115,36 +138,34 @@ def verify_email(token: str = Query(...), db: Session = Depends(get_db)):
         details_json={"email": user.email},
     )
 
-    return {"message": "Email verified successfully"}
+    return {"message": "Email verified successfully. Your account has been created."}
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
-def resend_verification(email: EmailStr = Query(...), db: Session = Depends(get_db)):
-    user = (
+def resend_verification(
+    email: EmailStr = Query(...),
+    db: Session = Depends(get_db),
+):
+    existing_user = (
         db.query(User)
         .filter(User.email == email, User.deleted_at.is_(None))
         .first()
     )
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already verified and registered",
+        )
 
-    if not user:
+    pending = get_pending_registration_by_email(db, str(email))
+    if not pending:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+            detail="No pending registration found for this email",
         )
 
-    if user.auth_provider != "local":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification is only required for local accounts",
-        )
-
-    if user.email_verified_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email is already verified",
-        )
-
-    send_verification_email(db, user)
+    pending = refresh_pending_registration_token(db, pending)
+    send_pending_verification_email(pending)
 
     return {"message": "Verification email sent again"}
 
@@ -173,12 +194,6 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user",
-        )
-
-    if user.auth_provider == "local" and user.email_verified_at is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email before logging in",
         )
 
     user.last_login_at = datetime.now(timezone.utc)

@@ -21,4 +21,5 @@ from app.models.chat_message_feedback import ChatMessageFeedback
 from app.models.retargeting_session import RetargetingSession
 from app.models.retargeting_iteration import RetargetingIteration
 
+from app.models.pending_registration import PendingRegistration
 from app.models.audit_log import AuditLog
