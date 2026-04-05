@@ -6,7 +6,7 @@ import {
   runDiagnosisPipeline,
   generateCaseReport,
   getCaseReports,
-  getReportDownloadUrl,
+  downloadReportFile,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
 
@@ -23,6 +23,7 @@ export default function CaseDetailsPage() {
   const [runLoading, setRunLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportsLoading, setReportsLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -109,6 +110,28 @@ export default function CaseDetailsPage() {
     }
   }
 
+  async function handleDownloadReport(reportId) {
+    try {
+      setError("");
+      setDownloadingId(reportId);
+
+      const blob = await downloadReportFile(reportId, token);
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report_${reportId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message || "Failed to download report");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   if (user?.role !== "patient" && user?.role !== "doctor" && user?.role !== "admin") {
     return <p>You are not allowed to view this page.</p>;
   }
@@ -122,7 +145,14 @@ export default function CaseDetailsPage() {
       {success && <p style={{ color: "green" }}>{success}</p>}
 
       {caseData && (
-        <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8, marginBottom: 20 }}>
+        <div
+          style={{
+            border: "1px solid #ddd",
+            padding: 12,
+            borderRadius: 8,
+            marginBottom: 20,
+          }}
+        >
           <p><strong>Case ID:</strong> {caseData.id}</p>
           <p><strong>Status:</strong> {caseData.status}</p>
           <p><strong>Modality:</strong> {caseData.modality}</p>
@@ -251,13 +281,12 @@ export default function CaseDetailsPage() {
               <p><strong>Status:</strong> {report.status}</p>
               <p><strong>Created At:</strong> {report.created_at}</p>
 
-              <a
-                href={getReportDownloadUrl(report.id)}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                onClick={() => handleDownloadReport(report.id)}
+                disabled={downloadingId === report.id}
               >
-                Download Report
-              </a>
+                {downloadingId === report.id ? "Downloading..." : "Download Report"}
+              </button>
             </div>
           ))
         )}

@@ -8,6 +8,7 @@ import MyCasesPage from "./pages/MyCasesPage";
 import CaseDetailsPage from "./pages/CaseDetailsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
+import DoctorCasesPage from "./pages/DoctorCasesPage";
 
 export default function App() {
   const { token, logout, user } = useAuth();
@@ -37,6 +38,13 @@ export default function App() {
               <Link to="/my-cases">My Cases</Link>
             </>
           )}
+          
+          {token && user?.role === "doctor" && (
+            <>
+              <Link to="/doctor/cases">All Cases</Link>
+            </>
+          )}
+
         </div>
 
         <div>
@@ -98,6 +106,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <CaseDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/doctor/cases"
+            element={
+              <ProtectedRoute>
+                <DoctorCasesPage />
               </ProtectedRoute>
             }
           />

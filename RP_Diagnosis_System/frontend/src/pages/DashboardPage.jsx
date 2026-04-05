@@ -23,15 +23,15 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {user?.role === "doctor" && (
-        <div>
-          <h3>Doctor Actions</h3>
-          <ul>
-            <li>Next later: View all cases</li>
-            <li>Next later: View all reports</li>
-          </ul>
-        </div>
-      )}
+     {user?.role === "doctor" && (
+      <div>
+        <h3>Doctor Actions</h3>
+        <ul>
+          <li><Link to="/doctor/cases">View all cases</Link></li>
+          <li>Next later: View all reports</li>
+        </ul>
+      </div>
+    )}
 
       {user?.role === "admin" && (
         <ul>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAllReports, getReportDownloadUrl } from "../api";
+import { getAllReports, downloadReportFile } from "../api";
 import { useAuth } from "../auth/AuthContext";
 
 export default function DoctorReportsPage() {
@@ -8,6 +8,7 @@ export default function DoctorReportsPage() {
   const [reports, setReports] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
     if (!token || user?.role !== "doctor") return;
@@ -16,10 +17,11 @@ export default function DoctorReportsPage() {
       try {
         setLoading(true);
         setError("");
+
         const data = await getAllReports(token);
         setReports(data);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || "Failed to load reports");
       } finally {
         setLoading(false);
       }
@@ -27,6 +29,28 @@ export default function DoctorReportsPage() {
 
     loadReports();
   }, [token, user]);
+
+  async function handleDownload(reportId) {
+    try {
+      setError("");
+      setDownloadingId(reportId);
+
+      const blob = await downloadReportFile(reportId, token);
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report_${reportId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message || "Failed to download report");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   if (user?.role !== "doctor") {
     return <p>Only doctors can view this page.</p>;
@@ -60,17 +84,16 @@ export default function DoctorReportsPage() {
               <p><strong>Status:</strong> {report.status}</p>
               <p><strong>Created At:</strong> {report.created_at}</p>
 
-              <a
-                href={getReportDownloadUrl(report.id)}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                onClick={() => handleDownload(report.id)}
+                disabled={downloadingId === report.id}
               >
-                Download Report
-              </a>
+                {downloadingId === report.id ? "Downloading..." : "Download Report"}
+              </button>
             </div>
           ))}
         </div>
       )}
     </div>
   );
-}
+}2

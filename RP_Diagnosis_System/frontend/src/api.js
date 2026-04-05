@@ -162,3 +162,36 @@ export async function getCaseReports(caseId, token) {
 export function getReportDownloadUrl(reportId) {
   return `${API_BASE_URL}/reports/${reportId}/download`;
 }
+
+export async function getAllCases(token) {
+  return request("/cases", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function downloadReportFile(reportId, token) {
+  const response = await fetch(`${API_BASE_URL}/reports/${reportId}/download`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Download failed with status ${response.status}`;
+
+    try {
+      const data = await response.json();
+      errorMessage = data?.detail || data?.message || errorMessage;
+    } catch {
+      // ignore JSON parse failure
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  return response.blob();
+}

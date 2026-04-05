@@ -17,10 +17,11 @@ export default function DoctorCasesPage() {
       try {
         setLoading(true);
         setError("");
+
         const data = await getAllCases(token);
         setCases(data);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || "Failed to load cases");
       } finally {
         setLoading(false);
       }
