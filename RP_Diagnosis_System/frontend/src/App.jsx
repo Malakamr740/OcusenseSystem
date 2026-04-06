@@ -9,6 +9,10 @@ import CaseDetailsPage from "./pages/CaseDetailsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
 import DoctorCasesPage from "./pages/DoctorCasesPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
+import AdminModelsPage from "./pages/AdminModelsPage"; 
 
 export default function App() {
   const { token, logout, user } = useAuth();
@@ -42,6 +46,16 @@ export default function App() {
           {token && user?.role === "doctor" && (
             <>
               <Link to="/doctor/cases">All Cases</Link>
+            </>
+          )}
+
+          {token && user?.role === "admin" && (
+            <>
+              <Link to="/admin/dashboard">Dashboard</Link>
+              <Link to="/admin/users">Users</Link>
+              <Link to="/admin/audit-logs">Audit Logs</Link>
+              <Link to="/admin/settings">Settings</Link>
+              <Link to="/admin/models">Models</Link>
             </>
           )}
 
@@ -118,6 +132,43 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute>
+                <AdminUsersPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute>
+                <AdminSettingsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/models"
+            element={
+              <ProtectedRoute>
+                <AdminModelsPage />
+              </ProtectedRoute>
+            }
+          />
+
         </Routes>
       </div>
     </div>

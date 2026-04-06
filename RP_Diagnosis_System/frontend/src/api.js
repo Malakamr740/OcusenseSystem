@@ -195,3 +195,100 @@ export async function downloadReportFile(reportId, token) {
 
   return response.blob();
 }
+
+export async function getAdminDashboardSummary(token) {
+  return request("/admin/dashboard-summary", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getAllUsers(token) {
+  return request("/admin/users", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateUserStatus(userId, isActive, token) {
+  return request(`/admin/users/${userId}/status`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      is_active: isActive,
+    }),
+  });
+}
+
+export async function deleteUser(userId, token) {
+  return request(`/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getAppSettings(token) {
+  return request("/settings", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateAppSettings(payload, token) {
+  return request("/settings", {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getAllModels(token) {
+  return request("/models", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function createModel(payload, token) {
+  return request("/models", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateModel(modelId, payload, token) {
+  return request(`/models/${modelId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteModel(modelId, token) {
+  return request(`/models/${modelId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+

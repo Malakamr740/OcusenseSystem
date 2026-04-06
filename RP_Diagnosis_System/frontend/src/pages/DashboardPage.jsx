@@ -31,16 +31,21 @@ export default function DashboardPage() {
           <li>Next later: View all reports</li>
         </ul>
       </div>
-    )}
-
-      {user?.role === "admin" && (
-        <ul>
-          <li>Next later: Users</li>
-          <li>Next later: Audit logs</li>
-          <li>Next later: Settings</li>
-          <li>Next later: Model registry</li>
-        </ul>
       )}
+
+     {user?.role === "admin" && (
+        <div>
+          <h3>Admin Actions</h3>
+          <ul>
+            <li><Link to="/admin/dashboard">Dashboard</Link></li>
+            <li><Link to="/admin/users">Manage Users</Link></li>
+            <li><Link to="/admin/audit-logs">Audit Logs</Link></li>
+            <li><Link to="/admin/settings">Settings</Link></li>
+            <li><Link to="/admin/models">Model Registry</Link></li>
+          </ul>
+        </div>
+      )}
+
     </div>
   );
 }
