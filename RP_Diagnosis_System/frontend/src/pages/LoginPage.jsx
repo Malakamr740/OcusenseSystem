@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { loginUser } from "../api";
 import { useAuth } from "../auth/AuthContext";
 
@@ -31,7 +31,7 @@ export default function LoginPage() {
       setSuccess("Login successful");
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -65,8 +65,12 @@ export default function LoginPage() {
         </button>
       </form>
 
+      <div style={{ marginTop: 12 }}>
+        <Link to="/forgot-password">Forgot Password?</Link>
+      </div>
+
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       {success && <p style={{ color: "green" }}>{success}</p>}
     </div>
   );
-} 
+}

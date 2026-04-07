@@ -13,6 +13,9 @@ import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminModelsPage from "./pages/AdminModelsPage"; 
+import ChatbotPage from "./pages/ChatbotPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 export default function App() {
   const { token, logout, user } = useAuth();
@@ -40,12 +43,14 @@ export default function App() {
             <>
               <Link to="/upload-case">Upload Case</Link>
               <Link to="/my-cases">My Cases</Link>
+              <Link to="/chatbot">Chatbot</Link>
             </>
           )}
           
           {token && user?.role === "doctor" && (
             <>
               <Link to="/doctor/cases">All Cases</Link>
+              <Link to="/chatbot">Chatbot</Link>
             </>
           )}
 
@@ -56,6 +61,7 @@ export default function App() {
               <Link to="/admin/audit-logs">Audit Logs</Link>
               <Link to="/admin/settings">Settings</Link>
               <Link to="/admin/models">Models</Link>
+              <Link to="/chatbot">Chatbot</Link>
             </>
           )}
 
@@ -169,6 +175,17 @@ export default function App() {
             }
           />
 
+          <Route
+            path="/chatbot"
+            element={
+              <ProtectedRoute>
+                <ChatbotPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </div>
     </div>

@@ -10,7 +10,7 @@ from app.models.gradcam_result import GradcamResult
 from app.models.segmentation_result import SegmentationResult
 from app.services.model_registry_service import get_active_model_by_task_type
 from app.ml.diagnosis.classification.inference import predict_classification
-
+from app.ml.diagnosis.classification.gradcam import generate_gradcam_artifacts
 
 GRADCAM_DIR = "app/storage/gradcam"
 SEGMENTATION_DIR = "app/storage/segmentation"
@@ -51,25 +51,26 @@ def run_mock_pipeline(db: Session, case: Case) -> dict:
     gradcam_model = get_active_model_by_task_type(db, "gradcam")
     segmentation_model = get_active_model_by_task_type(db, "segmentation")
 
-    # -------------------------
-    # REAL classification model
-    # -------------------------
-    real_cls = predict_classification(case.image_path)
+    classification_model_name = (
+        classification_model.model_name if classification_model else "resnet_cbam"
+    )
+
+    real_cls = predict_classification(
+        case.image_path,
+        model_name=classification_model_name,
+    )
 
     pred1 = Prediction(
         case_id=case.id,
         model_registry_id=classification_model.id if classification_model else None,
         task_type="classification",
-        model_name=classification_model.model_name if classification_model else "resnet50_rp_classifier",
+        model_name=classification_model.model_name if classification_model else real_cls["architecture"],
         model_version=classification_model.model_version if classification_model else "v1",
         label=real_cls["label"],
         confidence=real_cls["confidence"],
         raw_output_json=real_cls["raw_output_json"],
     )
 
-    # -------------------------
-    # MOCK severity for now
-    # -------------------------
     pred2 = Prediction(
         case_id=case.id,
         model_registry_id=severity_model.id if severity_model else None,
@@ -91,29 +92,33 @@ def run_mock_pipeline(db: Session, case: Case) -> dict:
     db.refresh(pred1)
     db.refresh(pred2)
 
-    # -------------------------
-    # MOCK gradcam for now
-    # -------------------------
-    gradcam_overlay = _copy_artifact(case.image_path, GRADCAM_DIR, "gradcam_overlay")
-    gradcam_heatmap = _copy_artifact(case.image_path, GRADCAM_DIR, "gradcam_heatmap")
+    gradcam_data = generate_gradcam_artifacts(
+        case.image_path,
+        model_name=classification_model_name,
+    )
 
     gradcam = GradcamResult(
         case_id=case.id,
-        model_registry_id=gradcam_model.id if gradcam_model else None,
-        model_name=gradcam_model.model_name if gradcam_model else "mock_gradcam_model",
-        model_version=gradcam_model.model_version if gradcam_model else "v1",
-        target_class="RP",
-        heatmap_path=gradcam_heatmap,
-        overlay_path=gradcam_overlay,
-        metadata_json={"note": "placeholder artifact copied from original image"},
+        model_registry_id=(
+            gradcam_model.id
+            if gradcam_model
+            else classification_model.id if classification_model else None
+        ),
+        model_name=gradcam_model.model_name if gradcam_model else classification_model_name,
+        model_version=(
+            gradcam_model.model_version
+            if gradcam_model
+            else classification_model.model_version if classification_model else "v1"
+        ),
+        target_class=gradcam_data["target_class"],
+        heatmap_path=gradcam_data["heatmap_path"],
+        overlay_path=gradcam_data["overlay_path"],
+        metadata_json=gradcam_data["metadata_json"],
     )
     db.add(gradcam)
     db.commit()
     db.refresh(gradcam)
 
-    # -------------------------
-    # MOCK segmentation for now
-    # -------------------------
     vessel_mask = _copy_artifact(case.image_path, SEGMENTATION_DIR, "vessel_mask")
     vessel_overlay = _copy_artifact(case.image_path, SEGMENTATION_DIR, "vessel_overlay")
 

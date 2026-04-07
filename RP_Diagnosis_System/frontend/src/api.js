@@ -292,3 +292,80 @@ export async function deleteModel(modelId, token) {
   });
 }
 
+export async function createChatSession(payload, token) {
+  return request("/chat/sessions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getMyChatSessions(token) {
+  return request("/chat/sessions/me", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getChatMessages(sessionId, token) {
+  return request(`/chat/sessions/${sessionId}/messages`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function sendChatMessage(sessionId, payload, token) {
+  return request(`/chat/sessions/${sessionId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getStaticFileUrl(filePath) {
+  if (!filePath) return "";
+
+  const normalized = filePath.replace(/\\/g, "/");
+
+  if (normalized.startsWith("app/storage/")) {
+    const relativePath = normalized.replace("app/storage/", "");
+    return `${API_BASE_URL}/static/${relativePath}`;
+  }
+
+  return `${API_BASE_URL}/${normalized}`;
+}
+
+export async function forgotPassword(email) {
+  return request("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token, newPassword) {
+  return request("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({
+      token,
+      new_password: newPassword,
+    }),
+  });
+}
+
+export async function submitChatMessageFeedback(messageId, payload, token) {
+  return request(`/chat/messages/${messageId}/feedback`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}

@@ -18,7 +18,7 @@ export default function DashboardPage() {
             <li><Link to="/my-cases">View my cases</Link></li>
             <li>Next later: My reports</li>
             <li>Next later: Retargeting</li>
-            <li>Next later: Chatbot</li>
+            <li><Link to="/chatbot">Chatbot</Link></li>
           </ul>
         </div>
       )}
@@ -29,6 +29,7 @@ export default function DashboardPage() {
         <ul>
           <li><Link to="/doctor/cases">View all cases</Link></li>
           <li>Next later: View all reports</li>
+          <li><Link to="/chatbot">Chatbot</Link></li>
         </ul>
       </div>
       )}
@@ -42,6 +43,7 @@ export default function DashboardPage() {
             <li><Link to="/admin/audit-logs">Audit Logs</Link></li>
             <li><Link to="/admin/settings">Settings</Link></li>
             <li><Link to="/admin/models">Model Registry</Link></li>
+            <li><Link to="/chatbot">Chatbot</Link></li>         
           </ul>
         </div>
       )}

@@ -7,6 +7,7 @@ import {
   generateCaseReport,
   getCaseReports,
   downloadReportFile,
+  getStaticFileUrl,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
 
