@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { loginUser } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import FormField from "../components/FormField";
+import Alert from "../components/Alert";
+import Card from "../components/Card";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -11,24 +14,28 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   function updateField(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
+    }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    setSuccess("");
+    setErrors({});
     setLoading(true);
 
     try {
       const data = await loginUser(form);
       login(data.access_token);
-      setSuccess("Login successful");
       navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Login failed");
@@ -38,39 +45,63 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 420 }}>
-      <h2>Login</h2>
+    <div className="page-container auth-page">
+      <Card title="Welcome Back" subtitle="Sign in to your RP Diagnosis account">
+        {error && (
+          <Alert 
+            type="danger" 
+            message={error}
+            onClose={() => setError("")}
+            dismissible={true}
+          />
+        )}
+        
+        <form onSubmit={handleSubmit} style={{ marginTop: '2rem' }}>
+          <FormField
+            id="email"
+            label="Email Address"
+            type="email"
+            placeholder="your.email@example.com"
+            value={form.email}
+            onChange={updateField}
+            error={errors.email}
+            required
+          />
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={updateField}
-          required
-        />
+          <FormField
+            id="password"
+            label="Password"
+            type="password"
+            placeholder="Enter your password"
+            value={form.password}
+            onChange={updateField}
+            error={errors.password}
+            required
+          />
 
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={updateField}
-          required
-        />
+          <button 
+            type="submit" 
+            className="btn btn-primary btn-lg w-100" 
+            disabled={loading}
+            style={{ marginTop: '2rem' }}
+          >
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+        <div style={{ marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid var(--gray-200)', paddingTop: '1.5rem' }}>
+          <Link to="/forgot-password" className="text-muted" style={{ textDecoration: 'none', fontSize: '0.95rem' }}>
+            Forgot your password?
+          </Link>
+        </div>
 
-      <div style={{ marginTop: 12 }}>
-        <Link to="/forgot-password">Forgot Password?</Link>
-      </div>
-
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
+        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+          <span style={{ color: 'var(--gray-600)' }}>Don't have an account? </span>
+          <Link to="/register" style={{ color: 'var(--primary-color)', fontWeight: '600', textDecoration: 'none' }}>
+            Create one
+          </Link>
+        </div>
+      </Card>
     </div>
   );
 }

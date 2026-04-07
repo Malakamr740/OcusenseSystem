@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import { getAdminDashboardSummary } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import PageHeader from "../components/PageHeader";
+import StatCard from "../components/StatCard";
+import LoadingState from "../components/LoadingState";
+import Alert from "../components/Alert";
 
+/**
+ * Professional AdminDashboardPage
+ * 
+ * Improves UX by:
+ * - PageHeader for professional title
+ * - StatCard components for metrics grid
+ * - LoadingState component
+ * - Alert for errors
+ * - Professional metric display with icons
+ * - Responsive grid layout
+ */
 export default function AdminDashboardPage() {
   const { token, user } = useAuth();
 
@@ -30,73 +45,77 @@ export default function AdminDashboardPage() {
   }, [token, user]);
 
   if (user?.role !== "admin") {
-    return <p>Only admins can view this page.</p>;
+    return (
+      <div className="page-container">
+        <PageHeader 
+          title="Admin Dashboard"
+          subtitle="Access Restricted"
+        />
+        <Alert 
+          type="warning" 
+          message="Only administrators can access this dashboard."
+          dismissible={false}
+        />
+      </div>
+    );
   }
 
+  if (loading) {
+    return (
+      <div className="page-container">
+        <PageHeader 
+          title="Admin Dashboard"
+          subtitle="System overview and statistics"
+        />
+        <LoadingState message="Loading dashboard metrics..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-container">
+        <PageHeader 
+          title="Admin Dashboard"
+          subtitle="System overview and statistics"
+        />
+        <Alert 
+          type="danger" 
+          message={error}
+          dismissible={false}
+        />
+      </div>
+    );
+  }
+
+  const metrics = summary ? [
+    { label: "Total Users", value: summary.total_users ?? 0, icon: "👥" },
+    { label: "Patients", value: summary.total_patients ?? 0, icon: "🏥" },
+    { label: "Healthcare Professionals", value: summary.total_doctors ?? 0, icon: "👨‍⚕️" },
+    { label: "Administrators", value: summary.total_admins ?? 0, icon: "⚙️" },
+    { label: "Cases", value: summary.total_cases ?? 0, icon: "📋" },
+    { label: "Reports Generated", value: summary.total_reports ?? 0, icon: "📊" },
+    { label: "Chat Sessions", value: summary.total_chat_sessions ?? 0, icon: "💬" },
+    { label: "Retargeting Sessions", value: summary.total_retargeting_sessions ?? 0, icon: "🔍" },
+  ] : [];
+
   return (
-    <div>
-      <h2>Admin Dashboard</h2>
+    <div className="page-container">
+      <PageHeader 
+        title="Admin Dashboard"
+        subtitle="System overview and key statistics"
+      />
 
-      {loading && <p>Loading dashboard...</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-
-      {!loading && !error && summary && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 16,
-            marginTop: 20,
-          }}
-        >
-          <SummaryCard title="Total Users" value={summary.total_users} />
-          <SummaryCard title="Total Patients" value={summary.total_patients} />
-          <SummaryCard title="Total Doctors" value={summary.total_doctors} />
-          <SummaryCard title="Total Admins" value={summary.total_admins} />
-          <SummaryCard title="Total Cases" value={summary.total_cases} />
-          <SummaryCard title="Total Reports" value={summary.total_reports} />
-          <SummaryCard title="Chat Sessions" value={summary.total_chat_sessions} />
-          <SummaryCard
-            title="Retargeting Sessions"
-            value={summary.total_retargeting_sessions}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+        {metrics.map((metric, index) => (
+          <StatCard 
+            key={index}
+            label={metric.label}
+            value={metric.value.toLocaleString()}
+            icon={metric.icon}
           />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SummaryCard({ title, value }) {
-  return (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 10,
-        padding: 20,
-        background: "#ffffff",
-        color: "#111111",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-      }}
-    >
-      <h3
-        style={{
-          margin: "0 0 10px 0",
-          color: "#111111",
-        }}
-      >
-        {title}
-      </h3>
-
-      <p
-        style={{
-          fontSize: 28,
-          fontWeight: "bold",
-          margin: 0,
-          color: "#111111",
-        }}
-      >
-        {value ?? 0}
-      </p>
+        ))}
+      </div>
     </div>
   );
 }

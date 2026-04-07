@@ -5,6 +5,12 @@ import {
   deleteUser,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import PageHeader from "../components/PageHeader";
+import Alert from "../components/Alert";
+import Card from "../components/Card";
+import LoadingState from "../components/LoadingState";
+import EmptyState from "../components/EmptyState";
+import StatusBadge from "../components/StatusBadge";
 
 export default function AdminUsersPage() {
   const { token, user } = useAuth();
@@ -46,7 +52,7 @@ export default function AdminUsersPage() {
   }
 
   async function handleDelete(u) {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+    if (!confirm(`Are you sure you want to delete ${u.email}? This action cannot be undone.`)) return;
 
     try {
       setActionLoading(u.id);
@@ -60,58 +66,97 @@ export default function AdminUsersPage() {
   }
 
   if (user?.role !== "admin") {
-    return <p>Only admins can view this page.</p>;
+    return (
+      <div className="page-container">
+        <Alert 
+          type="warning" 
+          message="Only administrators can access this page."
+        />
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h2>Manage Users</h2>
+    <div className="page-container">
+      <PageHeader 
+        title="User Management" 
+        subtitle="View and manage all users in the system"
+      />
 
-      {loading && <p>Loading users...</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && (
+        <Alert 
+          type="danger" 
+          message={error}
+          onClose={() => setError("")}
+          dismissible={true}
+        />
+      )}
 
-      {!loading && users.length === 0 && <p>No users found.</p>}
-
-      {!loading && users.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} style={{ borderTop: "1px solid #ddd" }}>
-                <td>{u.email}</td>
-                <td>{u.role}</td>
-                <td>{u.is_active ? "Active" : "Inactive"}</td>
-                <td>{u.created_at}</td>
-
-                <td>
-                  <button
-                    onClick={() => handleToggleStatus(u)}
-                    disabled={actionLoading === u.id}
-                  >
-                    {u.is_active ? "Deactivate" : "Activate"}
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(u)}
-                    disabled={actionLoading === u.id}
-                    style={{ marginLeft: 8 }}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {loading ? (
+        <LoadingState message="Loading users..." />
+      ) : users.length === 0 ? (
+        <EmptyState 
+          icon="👥"
+          title="No users found"
+          description="There are no users in the system yet."
+        />
+      ) : (
+        <Card title="All Users" subtitle={`${users.length} user${users.length !== 1 ? 's' : ''} total`}>
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="table-th">Email</th>
+                  <th className="table-th">Role</th>
+                  <th className="table-th">Status</th>
+                  <th className="table-th">Created</th>
+                  <th className="table-th">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td className="table-td">{u.email}</td>
+                    <td className="table-td">
+                      <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="table-td">
+                      <StatusBadge status={u.is_active ? "active" : "inactive"} />
+                    </td>
+                    <td className="table-td" style={{ fontSize: '0.9rem', color: 'var(--gray-600)' }}>
+                      {new Date(u.created_at).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </td>
+                    <td className="table-td table-actions">
+                      <button
+                        className={`table-action-btn ${u.is_active ? '' : ''}`}
+                        onClick={() => handleToggleStatus(u)}
+                        disabled={actionLoading === u.id}
+                        title={u.is_active ? "Deactivate user" : "Activate user"}
+                      >
+                        {actionLoading === u.id ? '...' : u.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button
+                        className="table-action-btn"
+                        onClick={() => handleDelete(u)}
+                        disabled={actionLoading === u.id}
+                        style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }}
+                        title="Delete user"
+                      >
+                        {actionLoading === u.id ? '...' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   );

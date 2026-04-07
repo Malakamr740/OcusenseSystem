@@ -10,7 +10,24 @@ import {
   getStaticFileUrl,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import PageHeader from "../components/PageHeader";
+import Card from "../components/Card";
+import Alert from "../components/Alert";
+import LoadingState from "../components/LoadingState";
+import StatusBadge from "../components/StatusBadge";
 
+/**
+ * Professional CaseDetailsPage
+ * 
+ * Improves UX by:
+ * - PageHeader with case ID
+ * - Card sections for case info, predictions, grad-cam, segmentation, reports
+ * - Alert components for errors/success
+ * - LoadingState component
+ * - StatusBadge for status display
+ * - Professional nested card grid layout
+ * - Button groups for diagnosis/report actions
+ */
 export default function CaseDetailsPage() {
   const { caseId } = useParams();
   const { token, user } = useAuth();
@@ -134,164 +151,322 @@ export default function CaseDetailsPage() {
   }
 
   if (user?.role !== "patient" && user?.role !== "doctor" && user?.role !== "admin") {
-    return <p>You are not allowed to view this page.</p>;
+    return (
+      <div className="page-container">
+        <PageHeader 
+          title="Case Details"
+          subtitle="Access Restricted"
+        />
+        <Alert 
+          type="warning" 
+          message="You do not have permission to view this case."
+          dismissible={false}
+        />
+      </div>
+    );
+  }
+
+  if (caseLoading) {
+    return (
+      <div className="page-container">
+        <PageHeader 
+          title="Case Details"
+          subtitle={`Case #${caseId}`}
+        />
+        <LoadingState message="Loading case information..." />
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h2>Case Details</h2>
+    <div className="page-container">
+      <PageHeader 
+        title="Case Details"
+        subtitle={caseData ? `Case #${caseData.id} - Diagnosis Results & Reports` : `Case #${caseId}`}
+      />
 
-      {caseLoading && <p>Loading case...</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
+      {error && (
+        <Alert 
+          type="danger" 
+          message={error}
+          dismissible={true}
+          onDismiss={() => setError("")}
+        />
+      )}
+
+      {success && (
+        <Alert 
+          type="success" 
+          message={success}
+          dismissible={true}
+          onDismiss={() => setSuccess("")}
+        />
+      )}
 
       {caseData && (
-        <div
-          style={{
-            border: "1px solid #ddd",
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 20,
-          }}
-        >
-          <p><strong>Case ID:</strong> {caseData.id}</p>
-          <p><strong>Status:</strong> {caseData.status}</p>
-          <p><strong>Modality:</strong> {caseData.modality}</p>
-          <p><strong>Image Path:</strong> {caseData.image_path}</p>
-          <p><strong>Created At:</strong> {caseData.created_at}</p>
-
-          <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-            <button onClick={handleRunDiagnosis} disabled={runLoading}>
-              {runLoading ? "Running..." : "Run Diagnosis"}
-            </button>
-
-            <button onClick={loadResults} disabled={resultsLoading}>
-              {resultsLoading ? "Loading..." : "Load Results"}
-            </button>
-
-            <button onClick={handleGenerateReport} disabled={reportLoading}>
-              {reportLoading ? "Generating..." : "Generate Report"}
-            </button>
-
-            <button onClick={loadReports} disabled={reportsLoading}>
-              {reportsLoading ? "Loading..." : "Load Reports"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {results && (
-        <div style={{ display: "grid", gap: 20, marginBottom: 24 }}>
-          <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8 }}>
-            <h3>Predictions</h3>
-
-            {results.predictions?.length ? (
-              results.predictions.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    border: "1px solid #eee",
-                    padding: 10,
-                    borderRadius: 6,
-                    marginBottom: 10,
-                  }}
-                >
-                  <p><strong>Task:</strong> {item.task_type}</p>
-                  <p><strong>Model:</strong> {item.model_name}</p>
-                  <p><strong>Version:</strong> {item.model_version || "-"}</p>
-                  <p><strong>Label:</strong> {item.label}</p>
-                  <p><strong>Confidence:</strong> {item.confidence}</p>
-                </div>
-              ))
-            ) : (
-              <p>No predictions found.</p>
+        <>
+          {/* Case Information */}
+          <Card title="Case Information" style={{ marginTop: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              <div>
+                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Case ID</strong>
+                <p style={{ marginTop: '0.5rem', fontSize: '1.1rem', color: '#333' }}>{caseData.id}</p>
+              </div>
+              <div>
+                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Status</strong>
+                <p style={{ marginTop: '0.5rem' }}>
+                  <StatusBadge status={caseData.status} />
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Modality</strong>
+                <p style={{ marginTop: '0.5rem', fontSize: '1.1rem', color: '#333' }}>{caseData.modality || "Fundus"}</p>
+              </div>
+              <div>
+                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Created</strong>
+                <p style={{ marginTop: '0.5rem', fontSize: '0.95rem', color: '#333' }}>
+                  {new Date(caseData.created_at).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            </div>
+            {caseData.image_path && (
+              <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+                <strong style={{ fontSize: '0.875rem', color: '#666' }}>Image Path</strong>
+                <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#333', wordBreak: 'break-all' }}>
+                  {caseData.image_path}
+                </p>
+              </div>
             )}
-          </div>
 
-          <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8 }}>
-            <h3>Grad-CAM Results</h3>
-
-            {results.gradcam_results?.length ? (
-              results.gradcam_results.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    border: "1px solid #eee",
-                    padding: 10,
-                    borderRadius: 6,
-                    marginBottom: 10,
-                  }}
-                >
-                  <p><strong>Model:</strong> {item.model_name}</p>
-                  <p><strong>Target Class:</strong> {item.target_class || "-"}</p>
-                  <p><strong>Overlay Path:</strong> {item.overlay_path}</p>
-                  <p><strong>Heatmap Path:</strong> {item.heatmap_path || "-"}</p>
-                </div>
-              ))
-            ) : (
-              <p>No Grad-CAM results found.</p>
-            )}
-          </div>
-
-          <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8 }}>
-            <h3>Segmentation Results</h3>
-
-            {results.segmentation_results?.length ? (
-              results.segmentation_results.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    border: "1px solid #eee",
-                    padding: 10,
-                    borderRadius: 6,
-                    marginBottom: 10,
-                  }}
-                >
-                  <p><strong>Type:</strong> {item.segmentation_type}</p>
-                  <p><strong>Model:</strong> {item.model_name}</p>
-                  <p><strong>Version:</strong> {item.model_version || "-"}</p>
-                  <p><strong>Mask Path:</strong> {item.mask_path}</p>
-                  <p><strong>Overlay Path:</strong> {item.overlay_path || "-"}</p>
-                </div>
-              ))
-            ) : (
-              <p>No segmentation results found.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8 }}>
-        <h3>Reports</h3>
-
-        {reports.length === 0 ? (
-          <p>No reports loaded yet.</p>
-        ) : (
-          reports.map((report) => (
-            <div
-              key={report.id}
-              style={{
-                border: "1px solid #eee",
-                padding: 10,
-                borderRadius: 6,
-                marginBottom: 10,
-              }}
-            >
-              <p><strong>Report ID:</strong> {report.id}</p>
-              <p><strong>Type:</strong> {report.report_type}</p>
-              <p><strong>Status:</strong> {report.status}</p>
-              <p><strong>Created At:</strong> {report.created_at}</p>
-
-              <button
-                onClick={() => handleDownloadReport(report.id)}
-                disabled={downloadingId === report.id}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleRunDiagnosis} 
+                disabled={runLoading}
               >
-                {downloadingId === report.id ? "Downloading..." : "Download Report"}
+                {runLoading ? "⏳ Analyzing..." : "🔬 Run Diagnosis"}
+              </button>
+
+              <button 
+                className="btn btn-secondary" 
+                onClick={loadResults} 
+                disabled={resultsLoading}
+              >
+                {resultsLoading ? "⏳ Loading..." : "📊 Load Results"}
+              </button>
+
+              <button 
+                className="btn btn-success" 
+                onClick={handleGenerateReport} 
+                disabled={reportLoading}
+              >
+                {reportLoading ? "⏳ Generating..." : "📄 Generate Report"}
+              </button>
+
+              <button 
+                className="btn btn-info" 
+                onClick={loadReports} 
+                disabled={reportsLoading}
+              >
+                {reportsLoading ? "⏳ Loading..." : "📋 Load Reports"}
               </button>
             </div>
-          ))
-        )}
-      </div>
+          </Card>
+
+          {/* Diagnosis Results */}
+          {results && (
+            <>
+              {/* Predictions */}
+              <Card title="AI Predictions" style={{ marginTop: '2rem' }}>
+                {results.predictions?.length ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                    {results.predictions.map((item) => (
+                      <Card 
+                        key={item.id} 
+                        title={item.task_type}
+                        style={{ backgroundColor: '#fafafa' }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Model</strong>
+                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_name}</p>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Version</strong>
+                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_version || "N/A"}</p>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Diagnosis</strong>
+                            <p style={{ marginTop: '0.25rem', fontSize: '1.1rem', fontWeight: '600', color: '#007bff' }}>
+                              {item.label}
+                            </p>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Confidence</strong>
+                            <div style={{ marginTop: '0.5rem', backgroundColor: '#e9ecef', borderRadius: '4px', overflow: 'hidden', height: '24px' }}>
+                              <div 
+                                style={{ 
+                                  width: `${Math.min(parseFloat(item.confidence) * 100, 100)}%`, 
+                                  backgroundColor: '#28a745',
+                                  height: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#fff',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                {(parseFloat(item.confidence) * 100).toFixed(1)}%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: '#666', textAlign: 'center' }}>No predictions available yet.</p>
+                )}
+              </Card>
+
+              {/* Grad-CAM Results */}
+              {results.gradcam_results?.length > 0 && (
+                <Card title="Visual Explanations (Grad-CAM)" style={{ marginTop: '2rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                    {results.gradcam_results.map((item) => (
+                      <Card 
+                        key={item.id} 
+                        title={item.model_name}
+                        style={{ backgroundColor: '#fafafa' }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Target Class</strong>
+                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.target_class || "N/A"}</p>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Overlay Path</strong>
+                            <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
+                              {item.overlay_path}
+                            </p>
+                          </div>
+                          {item.heatmap_path && (
+                            <div>
+                              <strong style={{ color: '#666', fontSize: '0.875rem' }}>Heatmap Path</strong>
+                              <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
+                                {item.heatmap_path}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Segmentation Results */}
+              {results.segmentation_results?.length > 0 && (
+                <Card title="Segmentation Results" style={{ marginTop: '2rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                    {results.segmentation_results.map((item) => (
+                      <Card 
+                        key={item.id} 
+                        title={item.segmentation_type}
+                        style={{ backgroundColor: '#fafafa' }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Model</strong>
+                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_name}</p>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Version</strong>
+                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_version || "N/A"}</p>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Mask Path</strong>
+                            <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
+                              {item.mask_path}
+                            </p>
+                          </div>
+                          {item.overlay_path && (
+                            <div>
+                              <strong style={{ color: '#666', fontSize: '0.875rem' }}>Overlay Path</strong>
+                              <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
+                                {item.overlay_path}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </>
+          )}
+
+          {/* Reports Section */}
+          <Card title="Generated Reports" style={{ marginTop: '2rem' }}>
+            {reports.length === 0 ? (
+              <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
+                No reports generated yet. Run diagnosis and generate a report above.
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                {reports.map((report) => (
+                  <Card 
+                    key={report.id} 
+                    title={`Report #${report.id}`}
+                    style={{ backgroundColor: '#fafafa', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <strong style={{ color: '#666', fontSize: '0.875rem' }}>Type</strong>
+                        <p style={{ marginTop: '0.25rem', color: '#333' }}>{report.report_type || "Diagnostic"}</p>
+                      </div>
+                      <div>
+                        <strong style={{ color: '#666', fontSize: '0.875rem' }}>Status</strong>
+                        <p style={{ marginTop: '0.25rem' }}>
+                          <StatusBadge status={report.status} />
+                        </p>
+                      </div>
+                      <div style={{ marginTop: '1rem' }}>
+                        <strong style={{ color: '#666', fontSize: '0.875rem' }}>Generated</strong>
+                        <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', color: '#333' }}>
+                          {new Date(report.created_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleDownloadReport(report.id)}
+                      disabled={downloadingId === report.id}
+                      style={{ marginTop: '1rem' }}
+                    >
+                      {downloadingId === report.id ? "⬇ Downloading..." : "⬇ Download PDF"}
+                    </button>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </Card>
+        </>
+      )}
     </div>
   );
 }

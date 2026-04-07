@@ -6,7 +6,26 @@ import {
   deleteModel,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import PageHeader from "../components/PageHeader";
+import Card from "../components/Card";
+import FormField from "../components/FormField";
+import DataTable from "../components/DataTable";
+import Alert from "../components/Alert";
+import LoadingState from "../components/LoadingState";
+import StatusBadge from "../components/StatusBadge";
 
+/**
+ * Professional AdminModelsPage
+ * 
+ * Improves UX by:
+ * - PageHeader for professional title
+ * - Two Card sections: form (add/edit) and table (list)
+ * - FormField components for all inputs
+ * - DataTable component for model list
+ * - Professional Alert messages
+ * - Loading state handling
+ * - StatusBadge for active/inactive status
+ */
 export default function AdminModelsPage() {
   const { token, user } = useAuth();
 
@@ -15,6 +34,7 @@ export default function AdminModelsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [formErrors, setFormErrors] = useState({});
 
   const [editingId, setEditingId] = useState(null);
 
@@ -55,6 +75,7 @@ export default function AdminModelsPage() {
       notes: "",
     });
     setEditingId(null);
+    setFormErrors({});
   }
 
   function handleChange(e) {
@@ -63,6 +84,10 @@ export default function AdminModelsPage() {
       ...form,
       [name]: type === "checkbox" ? checked : value,
     });
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: "" });
+    }
+    if (error) setError("");
   }
 
   function handleEdit(model) {
@@ -77,10 +102,32 @@ export default function AdminModelsPage() {
     });
     setSuccess("");
     setError("");
+    setFormErrors({});
   }
+
+  const validateForm = () => {
+    const errors = {};
+    if (!form.task_type.trim()) {
+      errors.task_type = "Task type is required.";
+    }
+    if (!form.model_name.trim()) {
+      errors.model_name = "Model name is required.";
+    }
+    if (!form.model_version.trim()) {
+      errors.model_version = "Model version is required.";
+    }
+    return errors;
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setError("Please fix the errors below before saving.");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -120,137 +167,186 @@ export default function AdminModelsPage() {
   }
 
   if (user?.role !== "admin") {
-    return <p>Only admins can view this page.</p>;
+    return (
+      <div className="page-container">
+        <PageHeader 
+          title="Model Registry"
+          subtitle="Access Restricted"
+        />
+        <Alert 
+          type="warning" 
+          message="Only administrators can manage the model registry."
+          dismissible={false}
+        />
+      </div>
+    );
   }
 
+  const tableColumns = [
+    { key: "task_type", label: "Task Type" },
+    { key: "model_name", label: "Model Name" },
+    { key: "model_version", label: "Version" },
+    { key: "framework", label: "Framework" },
+    { key: "is_active", label: "Status", render: (value) => (
+      <StatusBadge status={value ? "active" : "inactive"} />
+    )},
+  ];
+
+  const tableActions = [
+    {
+      label: "Edit",
+      onClick: (model) => handleEdit(model),
+      variant: "primary",
+    },
+    {
+      label: "Delete",
+      onClick: (model) => handleDelete(model.id),
+      variant: "danger",
+    },
+  ];
+
   return (
-    <div>
-      <h2>Model Registry</h2>
+    <div className="page-container">
+      <PageHeader 
+        title="Model Registry"
+        subtitle="Manage ML models and their configurations"
+      />
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
+      {error && (
+        <Alert 
+          type="danger" 
+          message={error}
+          dismissible={true}
+          onDismiss={() => setError("")}
+        />
+      )}
 
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: 16,
-          marginBottom: 24,
-          background: "#fff",
-          color: "#111",
-        }}
-      >
-        <h3>{editingId ? "Edit Model" : "Add New Model"}</h3>
+      {success && (
+        <Alert 
+          type="success" 
+          message={success}
+          dismissible={true}
+          onDismiss={() => setSuccess("")}
+        />
+      )}
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-          <input
+      <Card title={editingId ? "Edit Model" : "Add New Model"}>
+        <form onSubmit={handleSubmit}>
+          <FormField
+            label="Task Type"
             type="text"
             name="task_type"
-            placeholder="Task Type (classification / segmentation / ...)"
+            placeholder="e.g., classification, segmentation"
             value={form.task_type}
             onChange={handleChange}
+            error={formErrors.task_type}
             required
+            helpText="Type of machine learning task (classification / segmentation / detection)"
           />
 
-          <input
+          <FormField
+            label="Model Name"
             type="text"
             name="model_name"
-            placeholder="Model Name"
+            placeholder="e.g., ResNet50, U-Net"
             value={form.model_name}
             onChange={handleChange}
+            error={formErrors.model_name}
             required
+            helpText="Name identifier for the model"
           />
 
-          <input
+          <FormField
+            label="Model Version"
             type="text"
             name="model_version"
-            placeholder="Model Version"
+            placeholder="e.g., 1.0.0"
             value={form.model_version}
             onChange={handleChange}
+            error={formErrors.model_version}
             required
+            helpText="Version number (semantic versioning recommended)"
           />
 
-          <input
+          <FormField
+            label="Framework"
             type="text"
             name="framework"
-            placeholder="Framework (pytorch / tensorflow / onnx)"
+            placeholder="e.g., PyTorch, TensorFlow, ONNX"
             value={form.framework}
             onChange={handleChange}
+            helpText="ML framework used (PyTorch / TensorFlow / ONNX / etc.)"
           />
 
-          <label>
+          <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center' }}>
             <input
               type="checkbox"
+              id="is_active"
               name="is_active"
               checked={form.is_active}
               onChange={handleChange}
+              style={{ marginRight: '0.5rem', width: '18px', height: '18px', cursor: 'pointer' }}
             />
-            Active
-          </label>
+            <label htmlFor="is_active" style={{ cursor: 'pointer', fontWeight: '500', color: '#333' }}>
+              Model is Active
+            </label>
+            <span style={{ fontSize: '0.875rem', color: '#666', marginLeft: '0.5rem' }}>
+              Active models are available for prediction tasks
+            </span>
+          </div>
 
-          <textarea
+          <FormField
+            label="Notes"
+            type="textarea"
             name="notes"
-            placeholder="Notes"
-            rows="4"
+            placeholder="Enter any additional notes about this model..."
             value={form.notes}
             onChange={handleChange}
+            rows="4"
+            helpText="Additional documentation or implementation notes"
           />
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <button type="submit" disabled={saving}>
-              {saving ? "Saving..." : editingId ? "Update Model" : "Create Model"}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={saving}
+              style={{ flex: '1', minWidth: '150px' }}
+            >
+              {saving ? "Saving..." : (editingId ? "Update Model" : "Create Model")}
             </button>
-
             {editingId && (
-              <button type="button" onClick={resetForm}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={resetForm}
+                disabled={saving}
+                style={{ flex: '1', minWidth: '150px' }}
+              >
                 Cancel Edit
               </button>
             )}
           </div>
         </form>
-      </div>
+      </Card>
 
-      <h3>All Models</h3>
+      <Card title="All Models" style={{ marginTop: '2rem' }}>
+        {loading && <LoadingState message="Loading models..." />}
 
-      {loading && <p>Loading models...</p>}
+        {!loading && models.length === 0 && (
+          <p style={{ color: '#666', padding: '2rem', textAlign: 'center' }}>
+            No models registered yet. Create your first model above.
+          </p>
+        )}
 
-      {!loading && models.length === 0 && <p>No models found.</p>}
-
-      {!loading && models.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th>Task</th>
-              <th>Name</th>
-              <th>Version</th>
-              <th>Framework</th>
-              <th>Active</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {models.map((model) => (
-              <tr key={model.id} style={{ borderTop: "1px solid #ddd" }}>
-                <td>{model.task_type}</td>
-                <td>{model.model_name}</td>
-                <td>{model.model_version}</td>
-                <td>{model.framework || "-"}</td>
-                <td>{model.is_active ? "Yes" : "No"}</td>
-                <td>
-                  <button onClick={() => handleEdit(model)}>Edit</button>
-                  <button
-                    onClick={() => handleDelete(model.id)}
-                    style={{ marginLeft: 8 }}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+        {!loading && models.length > 0 && (
+          <DataTable 
+            columns={tableColumns}
+            data={models}
+            actions={tableActions}
+          />
+        )}
+      </Card>
     </div>
   );
 }

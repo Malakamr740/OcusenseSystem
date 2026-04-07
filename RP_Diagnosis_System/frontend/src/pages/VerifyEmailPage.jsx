@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { verifyEmail } from "../api";
+import Alert from "../components/Alert";
+import Card from "../components/Card";
+import LoadingState from "../components/LoadingState";
 
+/**
+ * Professional VerifyEmailPage
+ * 
+ * Improves UX by:
+ * - LoadingState component while verifying
+ * - Professional Alert messages
+ * - Clear next steps with login link
+ */
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -18,7 +29,7 @@ export default function VerifyEmailPage() {
 
     async function runVerification() {
       if (!token) {
-        setError("Verification token is missing.");
+        setError("Verification token is missing. Please use the link from your email.");
         setLoading(false);
         return;
       }
@@ -28,9 +39,9 @@ export default function VerifyEmailPage() {
         setSuccess("");
 
         const data = await verifyEmail(token);
-        setSuccess(data.message || "Email verified successfully.");
+        setSuccess(data.message || "Email verified successfully! You can now log in.");
       } catch (err) {
-        setError(err.message || "Verification failed.");
+        setError(err.message || "Verification failed. The link may have expired.");
       } finally {
         setLoading(false);
       }
@@ -40,18 +51,46 @@ export default function VerifyEmailPage() {
   }, [token]);
 
   return (
-    <div style={{ maxWidth: 500 }}>
-      <h2>Verify Email</h2>
+    <div className="page-container auth-page">
+      <Card title="Email Verification">
+        {loading && (
+          <LoadingState message="Verifying your email address..." />
+        )}
 
-      {loading && <p>Verifying your email...</p>}
-      {!loading && success && <p style={{ color: "green" }}>{success}</p>}
-      {!loading && !success && error && <p style={{ color: "crimson" }}>{error}</p>}
+        {!loading && error && (
+          <>
+            <Alert 
+              type="danger" 
+              message={error}
+              dismissible={false}
+            />
+            <Link 
+              to="/login" 
+              className="btn btn-primary w-100" 
+              style={{ marginTop: '2rem', textDecoration: 'none', display: 'block', textAlign: 'center' }}
+            >
+              Back to Login
+            </Link>
+          </>
+        )}
 
-      {!loading && (
-        <div style={{ marginTop: 16 }}>
-          <Link to="/login">Go to Login</Link>
-        </div>
-      )}
+        {!loading && success && (
+          <>
+            <Alert 
+              type="success" 
+              message={success}
+              dismissible={false}
+            />
+            <Link 
+              to="/login" 
+              className="btn btn-primary w-100" 
+              style={{ marginTop: '2rem', textDecoration: 'none', display: 'block', textAlign: 'center' }}
+            >
+              Go to Login
+            </Link>
+          </>
+        )}
+      </Card>
     </div>
   );
 }

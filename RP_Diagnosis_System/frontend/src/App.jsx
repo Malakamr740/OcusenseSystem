@@ -1,4 +1,6 @@
-import { Routes, Route, Link, Navigate } from "react-router";
+import { Routes, Route, Navigate, Outlet } from "react-router";
+import MainLayout from "./components/MainLayout";
+import TopNav from "./components/TopNav";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
@@ -16,187 +18,112 @@ import AdminModelsPage from "./pages/AdminModelsPage";
 import ChatbotPage from "./pages/ChatbotPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import DoctorReportsPage from "./pages/DoctorReportsPage";
 
 export default function App() {
-  const { token, logout, user } = useAuth();
+  const { token } = useAuth();
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", minHeight: "100vh" }}>
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          padding: "12px 20px",
-          borderBottom: "1px solid #ddd",
-          background: "#f8f9fb",
-        }}
-      >
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <Link to="/">Home</Link>
+    <Routes>
+      <Route element={<UnauthLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/login"
+          element={token ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+        />
+        <Route
+          path="/register"
+          element={token ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
+        />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+      </Route>
 
-          {!token && <Link to="/login">Login</Link>}
-          {!token && <Link to="/register">Register</Link>}
+      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/upload-case" element={<UploadCasePage />} />
+        <Route path="/my-cases" element={<MyCasesPage />} />
+        <Route path="/cases/:caseId" element={<CaseDetailsPage />} />
+        <Route path="/doctor/cases" element={<DoctorCasesPage />} />
+        <Route path="/doctor/reports" element={<DoctorReportsPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/settings" element={<AdminSettingsPage />} />
+        <Route path="/admin/models" element={<AdminModelsPage />} />
+        <Route path="/chatbot" element={<ChatbotPage />} />
+      </Route>
 
-          {token && <Link to="/dashboard">Dashboard</Link>}
+      <Route path="*" element={<Navigate to={token ? "/dashboard" : "/login"} replace />} />
+    </Routes>
+  );
+}
 
-          {token && user?.role === "patient" && (
-            <>
-              <Link to="/upload-case">Upload Case</Link>
-              <Link to="/my-cases">My Cases</Link>
-              <Link to="/chatbot">Chatbot</Link>
-            </>
-          )}
-          
-          {token && user?.role === "doctor" && (
-            <>
-              <Link to="/doctor/cases">All Cases</Link>
-              <Link to="/chatbot">Chatbot</Link>
-            </>
-          )}
-
-          {token && user?.role === "admin" && (
-            <>
-              <Link to="/admin/dashboard">Dashboard</Link>
-              <Link to="/admin/users">Users</Link>
-              <Link to="/admin/audit-logs">Audit Logs</Link>
-              <Link to="/admin/settings">Settings</Link>
-              <Link to="/admin/models">Models</Link>
-              <Link to="/chatbot">Chatbot</Link>
-            </>
-          )}
-
+function UnauthLayout() {
+  return (
+    <div className="app-shell">
+      <TopNav />
+      <main className="main-content">
+        <div className="page-container">
+          <Outlet />
         </div>
-
-        <div>
-          {token ? (
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <span>
-                {user ? `${user.email} (${user.role})` : "Logged in"}
-              </span>
-              <button onClick={logout}>Logout</button>
-            </div>
-          ) : (
-            <span>RP Diagnosis System</span>
-          )}
-        </div>
-      </nav>
-
-      <div style={{ padding: 24 }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route
-            path="/login"
-            element={token ? <Navigate to="/dashboard" replace /> : <LoginPage />}
-          />
-          <Route
-            path="/register"
-            element={token ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
-          />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/upload-case"
-            element={
-              <ProtectedRoute>
-                <UploadCasePage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/my-cases"
-            element={
-              <ProtectedRoute>
-                <MyCasesPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/cases/:caseId"
-            element={
-              <ProtectedRoute>
-                <CaseDetailsPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/doctor/cases"
-            element={
-              <ProtectedRoute>
-                <DoctorCasesPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute>
-                <AdminDashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/users"
-            element={
-              <ProtectedRoute>
-                <AdminUsersPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/settings"
-            element={
-              <ProtectedRoute>
-                <AdminSettingsPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/models"
-            element={
-              <ProtectedRoute>
-                <AdminModelsPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/chatbot"
-            element={
-              <ProtectedRoute>
-                <ChatbotPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-        </Routes>
-      </div>
+      </main>
     </div>
   );
 }
 
-function Home() {
+function HomePage() {
+  const { token } = useAuth();
+
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
-    <div>
-      <h1>RP Diagnosis System</h1>
-      <p>Frontend is connected to the backend step by step.</p>
+    <div className="page-container" style={{ maxWidth: "900px", margin: "0 auto" }}>
+      <div className="page-header">
+        <div>
+          <h1 style={{ color: "var(--white)", margin: 0 }}>Retinitis Pigmentosa Diagnosis System</h1>
+          <p style={{ color: "rgba(255,255,255,0.9)", margin: "0.5rem 0 0 0" }}>
+            AI-powered diagnosis assistance for retinal pathology
+          </p>
+        </div>
+      </div>
+
+      <div className="card" style={{ textAlign: "center", padding: "3rem 2rem" }}>
+        <h2>Welcome to the RP Diagnosis System</h2>
+        <p style={{ fontSize: "1.05rem", color: "var(--gray-700)", marginBottom: "2rem" }}>
+          A professional medical AI platform for diagnosis assistance, case management, and collaborative healthcare.
+        </p>
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+          <a href="/login" className="btn btn-primary">Login</a>
+          <a href="/register" className="btn btn-outline-primary">Register</a>
+        </div>
+      </div>
+
+      <div className="dashboard-grid" style={{ marginTop: "3rem" }}>
+        <div className="stat-card">
+          <div className="stat-card-icon">🔬</div>
+          <div className="stat-card-content">
+            <div className="stat-card-label">AI-Powered</div>
+            <div style={{ fontSize: "0.95rem", color: "var(--gray-700)" }}>Advanced machine learning for accurate diagnosis</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">👨‍⚕️</div>
+          <div className="stat-card-content">
+            <div className="stat-card-label">For Healthcare Professionals</div>
+            <div style={{ fontSize: "0.95rem", color: "var(--gray-700)" }}>Collaborate and manage patient cases</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">🔐</div>
+          <div className="stat-card-content">
+            <div className="stat-card-label">Secure & Compliant</div>
+            <div style={{ fontSize: "0.95rem", color: "var(--gray-700)" }}>HIPAA-compliant and encrypted</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

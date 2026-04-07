@@ -1,6 +1,19 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { forgotPassword } from "../api";
+import FormField from "../components/FormField";
+import Alert from "../components/Alert";
+import Card from "../components/Card";
 
+/**
+ * Professional ForgotPasswordPage
+ * 
+ * Improves UX by:
+ * - FormField component for consistent input styling
+ * - Professional Alert messages
+ * - Clear instruction text
+ * - Link back to login
+ */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,9 +30,8 @@ export default function ForgotPasswordPage() {
 
       const data = await forgotPassword(email);
       setSuccess(
-        data.message || "If the account exists, a password reset email has been sent."
+        data.message || "If the account exists, a password reset email has been sent. Check your inbox."
       );
-      setEmail("");
     } catch (err) {
       setError(err.message || "Failed to request password reset");
     } finally {
@@ -28,26 +40,57 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div style={{ maxWidth: 420 }}>
-      <h2>Forgot Password</h2>
-      <p>Enter your email address to receive a password reset link.</p>
+    <div className="page-container auth-page">
+      <Card 
+        title="Forgot Your Password?" 
+        subtitle="Enter your email to receive a password reset link"
+      >
+        {error && (
+          <Alert 
+            type="danger" 
+            message={error}
+            onClose={() => setError("")}
+            dismissible={true}
+          />
+        )}
+        {success && (
+          <Alert 
+            type="success" 
+            message={success}
+            dismissible={false}
+          />
+        )}
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        {!success && (
+          <form onSubmit={handleSubmit} style={{ marginTop: '2rem' }}>
+            <FormField
+              id="email"
+              label="Email Address"
+              type="email"
+              placeholder="your.email@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              help="We'll send a password reset link to this email"
+            />
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Sending..." : "Send Reset Link"}
-        </button>
-      </form>
+            <button 
+              type="submit" 
+              className="btn btn-primary btn-lg w-100" 
+              disabled={loading}
+              style={{ marginTop: '2rem' }}
+            >
+              {loading ? "Sending..." : "Send Reset Link"}
+            </button>
+          </form>
+        )}
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
+        <div style={{ marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid var(--gray-200)', paddingTop: '1.5rem' }}>
+          <Link to="/login" style={{ color: 'var(--primary-color)', fontWeight: '600', textDecoration: 'none' }}>
+            Back to Login
+          </Link>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -1,7 +1,20 @@
 import { useState } from "react";
 import { uploadCase } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import PageHeader from "../components/PageHeader";
+import Card from "../components/Card";
+import Alert from "../components/Alert";
 
+/**
+ * Professional UploadCasePage
+ * 
+ * Improves UX by:
+ * - PageHeader for professional title
+ * - Professional file input with feedback
+ * - Success message with uploaded case details
+ * - Alert components for errors
+ * - Loading state on submit button
+ */
 export default function UploadCasePage() {
   const { token, user } = useAuth();
 
@@ -14,6 +27,7 @@ export default function UploadCasePage() {
   function handleFileChange(e) {
     const file = e.target.files?.[0] || null;
     setSelectedFile(file);
+    if (error) setError("");
   }
 
   async function handleSubmit(e) {
@@ -23,7 +37,7 @@ export default function UploadCasePage() {
     setUploadedCase(null);
 
     if (!selectedFile) {
-      setError("Please choose an image first.");
+      setError("Please choose a fundus image first.");
       return;
     }
 
@@ -32,48 +46,118 @@ export default function UploadCasePage() {
     try {
       const data = await uploadCase(selectedFile, token);
       setUploadedCase(data);
-      setSuccess("Case uploaded successfully.");
+      setSuccess("Fundus image uploaded successfully! Your case is ready for analysis.");
       setSelectedFile(null);
       e.target.reset();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to upload fundus image. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   if (user?.role !== "patient") {
-    return <p>Only patients can upload cases.</p>;
+    return (
+      <div className="page-container">
+        <PageHeader 
+          title="Upload Fundus Image"
+          subtitle="Access Restricted"
+        />
+        <Alert 
+          type="warning" 
+          message="Only patients can upload fundus images for diagnosis."
+          dismissible={false}
+        />
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: 500 }}>
-      <h2>Upload Fundus Image</h2>
-      <p>Select a fundus image to create a new case.</p>
+    <div className="page-container">
+      <PageHeader 
+        title="Upload Fundus Image"
+        subtitle="Select a high-quality fundus image for diagnosis and analysis"
+      />
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-        <input
-          type="file"
-          accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-          onChange={handleFileChange}
+      {error && (
+        <Alert 
+          type="danger" 
+          message={error}
+          dismissible={true}
+          onDismiss={() => setError("")}
         />
+      )}
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Uploading..." : "Upload Case"}
-        </button>
-      </form>
+      {success && (
+        <Alert 
+          type="success" 
+          message={success}
+          dismissible={false}
+        />
+      )}
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
+      <Card title="Image Upload">
+        <form onSubmit={handleSubmit}>
+          <div className="form-group" style={{ marginBottom: '2rem' }}>
+            <label htmlFor="file" style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem', color: '#333' }}>
+              Select Fundus Image
+              <span style={{ color: '#dc3545' }}>*</span>
+            </label>
+            <input
+              id="file"
+              type="file"
+              className="form-control"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              onChange={handleFileChange}
+              style={{ padding: '0.75rem', borderRadius: '4px' }}
+            />
+            {selectedFile && (
+              <small style={{ display: 'block', marginTop: '0.5rem', color: '#28a745', fontWeight: '500' }}>
+                ✓ Selected: {selectedFile.name}
+              </small>
+            )}
+            <small style={{ display: 'block', marginTop: '0.5rem', color: '#666' }}>
+              Supported formats: JPG, PNG. Recommended: High-resolution fundus photos for accurate diagnosis.
+            </small>
+          </div>
+
+          <button 
+            type="submit" 
+            className="btn btn-primary w-100" 
+            disabled={loading}
+            style={{ padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: '500' }}
+          >
+            {loading ? "Uploading..." : "Upload Image"}
+          </button>
+        </form>
+      </Card>
 
       {uploadedCase && (
-        <div style={{ marginTop: 20, padding: 12, border: "1px solid #ddd" }}>
-          <h3>Uploaded Case</h3>
-          <p><strong>Case ID:</strong> {uploadedCase.id}</p>
-          <p><strong>Modality:</strong> {uploadedCase.modality}</p>
-          <p><strong>Status:</strong> {uploadedCase.status}</p>
-          <p><strong>Image Path:</strong> {uploadedCase.image_path}</p>
-        </div>
+        <Card title="Case Created" style={{ marginTop: '2rem', backgroundColor: '#f0f8ff', borderColor: '#28a745' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+            <div>
+              <strong style={{ color: '#666', fontSize: '0.875rem' }}>Case ID</strong>
+              <p style={{ marginTop: '0.5rem', fontSize: '1.1rem', color: '#333' }}>
+                {uploadedCase.id}
+              </p>
+            </div>
+            <div>
+              <strong style={{ color: '#666', fontSize: '0.875rem' }}>Modality</strong>
+              <p style={{ marginTop: '0.5rem', fontSize: '1.1rem', color: '#333' }}>
+                {uploadedCase.modality || "Fundus"}
+              </p>
+            </div>
+            <div>
+              <strong style={{ color: '#666', fontSize: '0.875rem' }}>Status</strong>
+              <p style={{ marginTop: '0.5rem', fontSize: '1.1rem', color: '#007bff', fontWeight: '500' }}>
+                {uploadedCase.status || "Pending Analysis"}
+              </p>
+            </div>
+          </div>
+          <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#666' }}>
+            Your fundus image has been successfully uploaded and is queued for AI analysis. You will be notified when results are ready.
+          </p>
+        </Card>
       )}
     </div>
   );

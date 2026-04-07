@@ -159,6 +159,15 @@ export async function getCaseReports(caseId, token) {
   });
 }
 
+export async function getAllReports(token) {
+  return request("/reports", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 export function getReportDownloadUrl(reportId) {
   return `${API_BASE_URL}/reports/${reportId}/download`;
 }
