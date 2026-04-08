@@ -1,472 +1,285 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
 import {
-  getCaseById,
-  getCaseResults,
-  runDiagnosisPipeline,
-  generateCaseReport,
-  getCaseReports,
-  downloadReportFile,
-  getStaticFileUrl,
-} from "../api";
-import { useAuth } from "../auth/AuthContext";
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Divider,
+  LinearProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
+import Grid from "@mui/material/Grid";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
+import { useParams, useNavigate } from "react-router-dom";
+import MainLayout from "../components/MainLayout";
 import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Alert from "../components/Alert";
-import LoadingState from "../components/LoadingState";
 import StatusBadge from "../components/StatusBadge";
+import { getCaseById, runDiagnosisPipeline, generateCaseReport, downloadReportFile, getCaseResults, getStaticFileUrl } from "../api";
+import { useAuth } from "../auth/AuthContext";
 
-/**
- * Professional CaseDetailsPage
- * 
- * Improves UX by:
- * - PageHeader with case ID
- * - Card sections for case info, predictions, grad-cam, segmentation, reports
- * - Alert components for errors/success
- * - LoadingState component
- * - StatusBadge for status display
- * - Professional nested card grid layout
- * - Button groups for diagnosis/report actions
- */
+const previewStyle = {
+  width: "100%",
+  height: 220,
+  borderRadius: 18,
+  background: "linear-gradient(135deg, #EEF4FF 0%, #E0EAFF 100%)",
+  border: "1px solid #D0D5DD",
+};
+
 export default function CaseDetailsPage() {
-  const { caseId } = useParams();
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { token, user } = useAuth();
 
   const [caseData, setCaseData] = useState(null);
   const [results, setResults] = useState(null);
-  const [reports, setReports] = useState([]);
-
-  const [caseLoading, setCaseLoading] = useState(true);
-  const [resultsLoading, setResultsLoading] = useState(false);
-  const [runLoading, setRunLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportsLoading, setReportsLoading] = useState(false);
-  const [downloadingId, setDownloadingId] = useState(null);
-
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [generatedReport, setGeneratedReport] = useState(null);
 
   useEffect(() => {
-    if (!token) return;
-
-    async function loadCase() {
+    const fetchCase = async () => {
       try {
-        setCaseLoading(true);
-        setError("");
-        const data = await getCaseById(caseId, token);
+        const data = await getCaseById(id, token);
         setCaseData(data);
+        if (data.status === "done") {
+          try {
+            const res = await getCaseResults(id, token);
+            setResults(res);
+          } catch (resErr) {
+            // Results might not be available, that's ok
+            setResults(null);
+          }
+        }
       } catch (err) {
-        setError(err.message || "Failed to load case");
+        setError(err.message || "Failed to load case details");
       } finally {
-        setCaseLoading(false);
+        setLoading(false);
       }
+    };
+
+    if (token && id) {
+      fetchCase();
     }
+  }, [token, id]);
 
-    loadCase();
-  }, [caseId, token]);
-
-  async function loadResults() {
+  const handleRunDiagnosis = async () => {
+    setRunning(true);
+    setSuccess("");
     try {
-      setResultsLoading(true);
+      await runDiagnosisPipeline(id, token);
       setError("");
-      const data = await getCaseResults(caseId, token);
-      setResults(data);
+      const updated = await getCaseById(id, token);
+      setCaseData(updated);
+      if (updated.status === "done") {
+        try {
+          const res = await getCaseResults(id, token);
+          setResults(res);
+        } catch (resErr) {
+          setResults(null);
+        }
+      }
     } catch (err) {
-      setError(err.message || "Failed to load results");
+      setError(err.message || "Failed to run diagnosis");
     } finally {
-      setResultsLoading(false);
+      setRunning(false);
     }
-  }
+  };
 
-  async function loadReports() {
+  const handleGenerateReport = async () => {
     try {
-      setReportsLoading(true);
+      const response = await generateCaseReport(id, token);
       setError("");
-      const data = await getCaseReports(caseId, token);
-      setReports(data);
-    } catch (err) {
-      setError(err.message || "Failed to load reports");
-    } finally {
-      setReportsLoading(false);
-    }
-  }
-
-  async function handleRunDiagnosis() {
-    try {
-      setRunLoading(true);
-      setError("");
-      setSuccess("");
-
-      const data = await runDiagnosisPipeline(caseId, token);
-      setResults(data);
-      setSuccess("Diagnosis pipeline completed successfully.");
-
-      const refreshedCase = await getCaseById(caseId, token);
-      setCaseData(refreshedCase);
-    } catch (err) {
-      setError(err.message || "Diagnosis failed");
-    } finally {
-      setRunLoading(false);
-    }
-  }
-
-  async function handleGenerateReport() {
-    try {
-      setReportLoading(true);
-      setError("");
-      setSuccess("");
-
-      await generateCaseReport(caseId, token);
       setSuccess("Report generated successfully.");
-
-      const loadedReports = await getCaseReports(caseId, token);
-      setReports(loadedReports);
+      setGeneratedReport(response.report);
     } catch (err) {
-      setError(err.message || "Report generation failed");
-    } finally {
-      setReportLoading(false);
+      setError(err.message || "Failed to generate report");
+      setSuccess("");
+      setGeneratedReport(null);
     }
-  }
+  };
 
-  async function handleDownloadReport(reportId) {
+  const handleDownloadReport = async (reportId) => {
     try {
-      setError("");
-      setDownloadingId(reportId);
-
       const blob = await downloadReportFile(reportId, token);
-
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `report_${reportId}.pdf`;
-      document.body.appendChild(a);
+      a.download = `report-${reportId}.pdf`;
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
     } catch (err) {
       setError(err.message || "Failed to download report");
-    } finally {
-      setDownloadingId(null);
     }
-  }
+  };
 
-  if (user?.role !== "patient" && user?.role !== "doctor" && user?.role !== "admin") {
+  if (loading) {
     return (
-      <div className="page-container">
-        <PageHeader 
-          title="Case Details"
-          subtitle="Access Restricted"
+      <MainLayout title="Case Details">
+        <PageHeader
+          eyebrow={user?.role === "doctor" ? "Doctor" : user?.role === "admin" ? "Admin" : "Patient"}
+          title="Case details"
+          subtitle="Prediction, Grad-CAM, segmentation, and reporting are grouped into one clearer clinical review page."
         />
-        <Alert 
-          type="warning" 
-          message="You do not have permission to view this case."
-          dismissible={false}
-        />
-      </div>
+        <Stack alignItems="center" py={8}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }}>Loading case details...</Typography>
+        </Stack>
+      </MainLayout>
     );
   }
 
-  if (caseLoading) {
+  if (!caseData) {
     return (
-      <div className="page-container">
-        <PageHeader 
-          title="Case Details"
-          subtitle={`Case #${caseId}`}
+      <MainLayout title="Case Details">
+        <PageHeader
+          eyebrow={user?.role === "doctor" ? "Doctor" : user?.role === "admin" ? "Admin" : "Patient"}
+          title="Case details"
+          subtitle="Prediction, Grad-CAM, segmentation, and reporting are grouped into one clearer clinical review page."
         />
-        <LoadingState message="Loading case information..." />
-      </div>
+        <Alert severity="error">Case not found or access denied.</Alert>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="page-container">
-      <PageHeader 
-        title="Case Details"
-        subtitle={caseData ? `Case #${caseData.id} - Diagnosis Results & Reports` : `Case #${caseId}`}
+    <MainLayout title="Case Details">
+      <PageHeader
+        eyebrow={user?.role === "doctor" ? "Doctor" : user?.role === "admin" ? "Admin" : "Patient"}
+        title="Case details"
+        subtitle="Prediction, Grad-CAM, segmentation, and reporting are grouped into one clearer clinical review page."
+        actions={
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+            <Button
+              variant="contained"
+              startIcon={running ? <CircularProgress size={20} /> : <PlayArrowOutlinedIcon />}
+              onClick={handleRunDiagnosis}
+              disabled={running}
+            >
+              {running ? "Running..." : "Run diagnosis"}
+            </Button>
+            <Button variant="outlined" startIcon={<DownloadOutlinedIcon />} onClick={handleGenerateReport} disabled={caseData?.status !== "done"}>
+              Generate report
+            </Button>
+          </Stack>
+        }
       />
 
+      {running ? (
+        <Card sx={{ mb: 3 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography sx={{ mb: 1.5 }}>Diagnosis in progress...</Typography>
+            <LinearProgress />
+          </CardContent>
+        </Card>
+      ) : null}
+
       {error && (
-        <Alert 
-          type="danger" 
-          message={error}
-          dismissible={true}
-          onDismiss={() => setError("")}
-        />
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
       )}
 
       {success && (
-        <Alert 
-          type="success" 
-          message={success}
-          dismissible={true}
-          onDismiss={() => setSuccess("")}
-        />
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {success}
+        </Alert>
       )}
 
-      {caseData && (
-        <>
-          {/* Case Information */}
-          <Card title="Case Information" style={{ marginTop: '2rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div>
-                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Case ID</strong>
-                <p style={{ marginTop: '0.5rem', fontSize: '1.1rem', color: '#333' }}>{caseData.id}</p>
-              </div>
-              <div>
-                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Status</strong>
-                <p style={{ marginTop: '0.5rem' }}>
+      {generatedReport && (
+        <Button
+          variant="contained"
+          sx={{ mb: 3 }}
+          onClick={() => handleDownloadReport(generatedReport.id)}
+          startIcon={<DownloadOutlinedIcon />}
+        >
+          Download generated report
+        </Button>
+      )}
+
+      {caseData.status === "done" && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          Latest result is ready for review.
+        </Alert>
+      )}
+
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Case summary
+              </Typography>
+              <Stack spacing={2}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography color="text.secondary">Status</Typography>
                   <StatusBadge status={caseData.status} />
-                </p>
-              </div>
-              <div>
-                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Modality</strong>
-                <p style={{ marginTop: '0.5rem', fontSize: '1.1rem', color: '#333' }}>{caseData.modality || "Fundus"}</p>
-              </div>
-              <div>
-                <strong style={{ color: '#666', fontSize: '0.875rem' }}>Created</strong>
-                <p style={{ marginTop: '0.5rem', fontSize: '0.95rem', color: '#333' }}>
-                  {new Date(caseData.created_at).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-            </div>
-            {caseData.image_path && (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                <strong style={{ fontSize: '0.875rem', color: '#666' }}>Image Path</strong>
-                <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#333', wordBreak: 'break-all' }}>
-                  {caseData.image_path}
-                </p>
-              </div>
-            )}
+                </Stack>
 
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
-              <button 
-                className="btn btn-primary" 
-                onClick={handleRunDiagnosis} 
-                disabled={runLoading}
-              >
-                {runLoading ? "⏳ Analyzing..." : "🔬 Run Diagnosis"}
-              </button>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography color="text.secondary">Modality</Typography>
+                  <Typography fontWeight={700}>{caseData.modality}</Typography>
+                </Stack>
 
-              <button 
-                className="btn btn-secondary" 
-                onClick={loadResults} 
-                disabled={resultsLoading}
-              >
-                {resultsLoading ? "⏳ Loading..." : "📊 Load Results"}
-              </button>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography color="text.secondary">Created</Typography>
+                  <Typography fontWeight={700}>{new Date(caseData.created_at).toLocaleDateString()}</Typography>
+                </Stack>
 
-              <button 
-                className="btn btn-success" 
-                onClick={handleGenerateReport} 
-                disabled={reportLoading}
-              >
-                {reportLoading ? "⏳ Generating..." : "📄 Generate Report"}
-              </button>
+                <Divider />
 
-              <button 
-                className="btn btn-info" 
-                onClick={loadReports} 
-                disabled={reportsLoading}
-              >
-                {reportsLoading ? "⏳ Loading..." : "📋 Load Reports"}
-              </button>
-            </div>
+                <Typography color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  This case shows the structured information from the backend. Run diagnosis to generate predictions.
+                </Typography>
+              </Stack>
+            </CardContent>
           </Card>
+        </Grid>
 
-          {/* Diagnosis Results */}
-          {results && (
-            <>
-              {/* Predictions */}
-              <Card title="AI Predictions" style={{ marginTop: '2rem' }}>
-                {results.predictions?.length ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                    {results.predictions.map((item) => (
-                      <Card 
-                        key={item.id} 
-                        title={item.task_type}
-                        style={{ backgroundColor: '#fafafa' }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Model</strong>
-                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_name}</p>
-                          </div>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Version</strong>
-                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_version || "N/A"}</p>
-                          </div>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Diagnosis</strong>
-                            <p style={{ marginTop: '0.25rem', fontSize: '1.1rem', fontWeight: '600', color: '#007bff' }}>
-                              {item.label}
-                            </p>
-                          </div>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Confidence</strong>
-                            <div style={{ marginTop: '0.5rem', backgroundColor: '#e9ecef', borderRadius: '4px', overflow: 'hidden', height: '24px' }}>
-                              <div 
-                                style={{ 
-                                  width: `${Math.min(parseFloat(item.confidence) * 100, 100)}%`, 
-                                  backgroundColor: '#28a745',
-                                  height: '100%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: '#fff',
-                                  fontSize: '0.75rem',
-                                  fontWeight: '600'
-                                }}
-                              >
-                                {(parseFloat(item.confidence) * 100).toFixed(1)}%
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: '#666', textAlign: 'center' }}>No predictions available yet.</p>
-                )}
-              </Card>
-
-              {/* Grad-CAM Results */}
-              {results.gradcam_results?.length > 0 && (
-                <Card title="Visual Explanations (Grad-CAM)" style={{ marginTop: '2rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                    {results.gradcam_results.map((item) => (
-                      <Card 
-                        key={item.id} 
-                        title={item.model_name}
-                        style={{ backgroundColor: '#fafafa' }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Target Class</strong>
-                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.target_class || "N/A"}</p>
-                          </div>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Overlay Path</strong>
-                            <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
-                              {item.overlay_path}
-                            </p>
-                          </div>
-                          {item.heatmap_path && (
-                            <div>
-                              <strong style={{ color: '#666', fontSize: '0.875rem' }}>Heatmap Path</strong>
-                              <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
-                                {item.heatmap_path}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Grid container spacing={3}>
+            {[
+              { title: "Original fundus image", path: caseData.image_path, caption: "Source image used for inference." },
+              { title: "Grad-CAM", path: results?.gradcam_results?.[0]?.overlay_path, caption: "Model attention over clinically relevant retinal regions." },
+              { title: "Vessel mask", path: results?.segmentation_results?.[0]?.mask_path, caption: "Supportive vessel segmentation mask." },
+              { title: "Overlay preview", path: results?.segmentation_results?.[0]?.overlay_path || results?.gradcam_results?.[0]?.overlay_path, caption: "Segmented output overlaid on the source image." },
+            ].map((item) => (
+              <Grid key={item.title} size={{ xs: 12, md: 6 }}>
+                <Card>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                      {item.title}
+                    </Typography>
+                    {item.path ? (
+                      <Box sx={previewStyle}>
+                        <img
+                          src={getStaticFileUrl(item.path)}
+                          alt={item.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 18 }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      <Box sx={{ ...previewStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography color="text.secondary">No image available</Typography>
+                      </Box>
+                    )}
+                    <Typography color="text.secondary" sx={{ mt: 1.5, lineHeight: 1.7 }}>
+                      {item.caption}
+                    </Typography>
+                  </CardContent>
                 </Card>
-              )}
-
-              {/* Segmentation Results */}
-              {results.segmentation_results?.length > 0 && (
-                <Card title="Segmentation Results" style={{ marginTop: '2rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                    {results.segmentation_results.map((item) => (
-                      <Card 
-                        key={item.id} 
-                        title={item.segmentation_type}
-                        style={{ backgroundColor: '#fafafa' }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Model</strong>
-                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_name}</p>
-                          </div>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Version</strong>
-                            <p style={{ marginTop: '0.25rem', color: '#333' }}>{item.model_version || "N/A"}</p>
-                          </div>
-                          <div>
-                            <strong style={{ color: '#666', fontSize: '0.875rem' }}>Mask Path</strong>
-                            <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
-                              {item.mask_path}
-                            </p>
-                          </div>
-                          {item.overlay_path && (
-                            <div>
-                              <strong style={{ color: '#666', fontSize: '0.875rem' }}>Overlay Path</strong>
-                              <p style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: '#666', wordBreak: 'break-all' }}>
-                                {item.overlay_path}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </Card>
-              )}
-            </>
-          )}
-
-          {/* Reports Section */}
-          <Card title="Generated Reports" style={{ marginTop: '2rem' }}>
-            {reports.length === 0 ? (
-              <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
-                No reports generated yet. Run diagnosis and generate a report above.
-              </p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                {reports.map((report) => (
-                  <Card 
-                    key={report.id} 
-                    title={`Report #${report.id}`}
-                    style={{ backgroundColor: '#fafafa', display: 'flex', flexDirection: 'column' }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ marginBottom: '1rem' }}>
-                        <strong style={{ color: '#666', fontSize: '0.875rem' }}>Type</strong>
-                        <p style={{ marginTop: '0.25rem', color: '#333' }}>{report.report_type || "Diagnostic"}</p>
-                      </div>
-                      <div>
-                        <strong style={{ color: '#666', fontSize: '0.875rem' }}>Status</strong>
-                        <p style={{ marginTop: '0.25rem' }}>
-                          <StatusBadge status={report.status} />
-                        </p>
-                      </div>
-                      <div style={{ marginTop: '1rem' }}>
-                        <strong style={{ color: '#666', fontSize: '0.875rem' }}>Generated</strong>
-                        <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', color: '#333' }}>
-                          {new Date(report.created_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleDownloadReport(report.id)}
-                      disabled={downloadingId === report.id}
-                      style={{ marginTop: '1rem' }}
-                    >
-                      {downloadingId === report.id ? "⬇ Downloading..." : "⬇ Download PDF"}
-                    </button>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </Card>
-        </>
-      )}
-    </div>
+              </Grid>
+            ))}
+          </Grid>
+        </Grid>
+      </Grid>
+    </MainLayout>
   );
 }

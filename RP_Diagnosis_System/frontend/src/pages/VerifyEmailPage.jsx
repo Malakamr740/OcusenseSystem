@@ -1,96 +1,122 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Container,
+  Stack,
+  Typography,
+} from "@mui/material";
+import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { verifyEmail } from "../api";
-import Alert from "../components/Alert";
-import Card from "../components/Card";
-import LoadingState from "../components/LoadingState";
+import { useAuth } from "../auth/AuthContext";
 
-/**
- * Professional VerifyEmailPage
- * 
- * Improves UX by:
- * - LoadingState component while verifying
- * - Professional Alert messages
- * - Clear next steps with login link
- */
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const token = searchParams.get("token") || "";
 
-  const hasRunRef = useRef(false);
-
-  const [loading, setLoading] = useState(true);
-  const [success, setSuccess] = useState("");
+  const [verifying, setVerifying] = useState(!!token);
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (hasRunRef.current) return;
-    hasRunRef.current = true;
+    if (!token) return;
 
-    async function runVerification() {
-      if (!token) {
-        setError("Verification token is missing. Please use the link from your email.");
-        setLoading(false);
-        return;
-      }
-
+    const verify = async () => {
       try {
+        await verifyEmail(token);
+        setVerified(true);
         setError("");
-        setSuccess("");
-
-        const data = await verifyEmail(token);
-        setSuccess(data.message || "Email verified successfully! You can now log in.");
       } catch (err) {
-        setError(err.message || "Verification failed. The link may have expired.");
+        setError(err.message || "Email verification failed. The link may have expired.");
       } finally {
-        setLoading(false);
+        setVerifying(false);
       }
-    }
+    };
 
-    runVerification();
+    verify();
   }, [token]);
 
   return (
-    <div className="page-container auth-page">
-      <Card title="Email Verification">
-        {loading && (
-          <LoadingState message="Verifying your email address..." />
-        )}
+    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", px: 2, py: 5 }}>
+      <Container maxWidth="lg">
+        <Stack direction={{ xs: "column", lg: "row" }} spacing={4} alignItems="stretch">
+          <Box sx={{ flex: 1, display: "flex", alignItems: "center", pr: { lg: 4 } }}>
+            <Box>
+              <Chip
+                label="Email confirmation"
+                color="primary"
+                variant="outlined"
+                sx={{ mb: 2, bgcolor: "white" }}
+              />
+              <Typography variant="h3" sx={{ mb: 2, fontSize: { xs: 36, md: 56 } }}>
+                Verify email
+              </Typography>
+              <Typography
+                variant="h6"
+                color="text.secondary"
+                sx={{ maxWidth: 640, lineHeight: 1.8, mb: 3 }}
+              >
+                Confirm your email before continuing to protected pages.
+              </Typography>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <MonitorHeartOutlinedIcon color="primary" />
+                <Typography color="text.secondary">
+                  This page can later read the backend verification token from the URL.
+                </Typography>
+              </Stack>
+            </Box>
+          </Box>
 
-        {!loading && error && (
-          <>
-            <Alert 
-              type="danger" 
-              message={error}
-              dismissible={false}
-            />
-            <Link 
-              to="/login" 
-              className="btn btn-primary w-100" 
-              style={{ marginTop: '2rem', textDecoration: 'none', display: 'block', textAlign: 'center' }}
-            >
-              Back to Login
-            </Link>
-          </>
-        )}
+          <Card sx={{ flex: 1, maxWidth: 560, width: "100%", ml: { lg: "auto" } }}>
+            <CardContent sx={{ p: { xs: 3, md: 5 } }}>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                Email verification
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 4, lineHeight: 1.7 }}>
+                Your email must be verified before accessing secure medical pages.
+              </Typography>
 
-        {!loading && success && (
-          <>
-            <Alert 
-              type="success" 
-              message={success}
-              dismissible={false}
-            />
-            <Link 
-              to="/login" 
-              className="btn btn-primary w-100" 
-              style={{ marginTop: '2rem', textDecoration: 'none', display: 'block', textAlign: 'center' }}
-            >
-              Go to Login
-            </Link>
-          </>
-        )}
-      </Card>
-    </div>
+              <Stack spacing={2.5}>
+                {verifying && (
+                  <Stack direction="row" alignItems="center" gap={2}>
+                    <CircularProgress size={24} />
+                    <Typography>Verifying your email...</Typography>
+                  </Stack>
+                )}
+
+                {!verifying && verified && (
+                  <Alert severity="success">Your email has been verified successfully.</Alert>
+                )}
+
+                {!verifying && !verified && error && (
+                  <Alert severity="error">{error}</Alert>
+                )}
+
+                {!verifying && (
+                  <Stack direction="row" spacing={1.5}>
+                    <Button component={Link} to="/login" variant="outlined" fullWidth>
+                      Return to sign in
+                    </Button>
+                    {user && (
+                      <Button onClick={() => navigate("/")} variant="contained" fullWidth>
+                        Return to home
+                      </Button>
+                    )}
+                  </Stack>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Stack>
+      </Container>
+    </Box>
   );
 }

@@ -48,10 +48,10 @@ export default function TopNav() {
 
               {user?.role === "patient" && (
                 <>
-                  <Link to="/upload-case" className={`topnav-link ${isActive("/upload-case") ? "active" : ""}`}>
+                  <Link to="/patient/upload" className={`topnav-link ${isActive("/patient/upload") ? "active" : ""}`}>
                     Upload Case
                   </Link>
-                  <Link to="/my-cases" className={`topnav-link ${isActive("/my-cases") ? "active" : ""}`}>
+                  <Link to="/patient/cases" className={`topnav-link ${isActive("/patient/cases") ? "active" : ""}`}>
                     My Cases
                   </Link>
                   <Link to="/chatbot" className={`topnav-link ${isActive("/chatbot") ? "active" : ""}`}>
@@ -81,13 +81,25 @@ export default function TopNav() {
                       <Link to="/admin/dashboard" className="topnav-submenu-item">
                         Dashboard
                       </Link>
+                      <Link to="/patient/upload" className="topnav-submenu-item">
+                        Upload Case
+                      </Link>
+                      <Link to="/patient/cases" className="topnav-submenu-item">
+                        My Cases
+                      </Link>
+                      <Link to="/doctor/cases" className="topnav-submenu-item">
+                        All Cases
+                      </Link>
+                      <Link to="/doctor/reports" className="topnav-submenu-item">
+                        Reports
+                      </Link>
                       <Link to="/admin/users" className="topnav-submenu-item">
                         Users
                       </Link>
                       <Link to="/admin/settings" className="topnav-submenu-item">
                         Settings
                       </Link>
-                      <Link to="/admin/models" className="topnav-submenu-item">
+                      <Link to="/admin/model-registry" className="topnav-submenu-item">
                         Models
                       </Link>
                     </div>

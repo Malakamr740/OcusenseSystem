@@ -1,23 +1,13 @@
-/**
- * StatusBadge - Display status with appropriate color/styling
- * 
- * Improves UX by:
- * - Consistent status display across tables and pages
- * - Color-coded status for quick scanning
- * - Professional appearance
- */
-export default function StatusBadge({ status, variant = "default" }) {
-  const variantMap = {
-    active: "badge-success",
-    inactive: "badge-secondary",
-    pending: "badge-warning",
-    completed: "badge-success",
-    failed: "badge-danger",
-    processing: "badge-info",
-    default: "badge-secondary",
-  };
+import { Chip } from "@mui/material";
 
-  const variantClass = variantMap[status] || variantMap.default;
+export default function StatusBadge({ status }) {
+  const normalized = String(status || "").toLowerCase();
 
-  return <span className={`badge ${variantClass}`}>{status}</span>;
+  let color = "default";
+  if (["completed", "active", "available", "success"].includes(normalized)) color = "success";
+  else if (["pending", "warning", "processing"].includes(normalized)) color = "warning";
+  else if (["error", "failed", "inactive"].includes(normalized)) color = "error";
+  else if (["info"].includes(normalized)) color = "info";
+
+  return <Chip label={status} color={color} size="small" />;
 }

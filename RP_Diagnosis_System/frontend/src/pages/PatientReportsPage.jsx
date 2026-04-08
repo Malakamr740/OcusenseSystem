@@ -4,10 +4,10 @@ import Grid from "@mui/material/Grid";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import MainLayout from "../components/MainLayout";
 import PageHeader from "../components/PageHeader";
-import { getAllReports, downloadReportFile } from "../api";
+import { getMyCases, getCaseReports, downloadReportFile } from "../api";
 import { useAuth } from "../auth/AuthContext";
 
-export default function DoctorReportsPage() {
+export default function PatientReportsPage() {
   const { token } = useAuth();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,8 +16,19 @@ export default function DoctorReportsPage() {
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const data = await getAllReports(token);
-        setReports(data);
+        const cases = await getMyCases(token);
+        const allReports = [];
+        
+        for (const caseItem of cases) {
+          try {
+            const caseReports = await getCaseReports(caseItem.id, token);
+            allReports.push(...caseReports);
+          } catch (err) {
+            // Case might not have reports yet, continue
+          }
+        }
+        
+        setReports(allReports);
       } catch (err) {
         setError(err.message || "Failed to load reports");
       } finally {
@@ -55,11 +66,11 @@ export default function DoctorReportsPage() {
 
   if (loading) {
     return (
-      <MainLayout title="Doctor Reports">
+      <MainLayout title="Patient Reports">
         <PageHeader
-          eyebrow="Doctor"
-          title="All reports"
-          subtitle="Access generated reports and case-level clinical summaries from a presentation-ready interface."
+          eyebrow="Patient"
+          title="My reports"
+          subtitle="Access your generated diagnosis reports and clinical summaries."
         />
         <Stack alignItems="center" py={8}>
           <CircularProgress />
@@ -68,17 +79,17 @@ export default function DoctorReportsPage() {
     );
   }
   return (
-    <MainLayout title="Doctor Reports">
+    <MainLayout title="Patient Reports">
       <PageHeader
-        eyebrow="Doctor"
-        title="All reports"
-        subtitle="Access generated reports and case-level clinical summaries from a presentation-ready interface."
+        eyebrow="Patient"
+        title="My reports"
+        subtitle="Access your generated diagnosis reports and clinical summaries."
       />
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
       {reports.length === 0 && !error && (
-        <Alert severity="info">No reports available yet.</Alert>
+        <Alert severity="info">No reports available yet. Upload a case and run diagnosis to generate reports.</Alert>
       )}
 
       <Grid container spacing={3}>
@@ -96,7 +107,7 @@ export default function DoctorReportsPage() {
                     Case: {report.case_id} • Created: {new Date(report.created_at).toLocaleDateString()}
                   </Typography>
 
-                  <Typography sx={{ lineHeight: 1.7 }}>{report.summary || "Report generated successfully."}</Typography>
+                  <Typography sx={{ lineHeight: 1.7 }}>Report generated successfully.</Typography>
 
                   <Stack direction="row" spacing={1.5}>
                     <Button variant="contained" onClick={() => handleView(report.id)}>Open report</Button>

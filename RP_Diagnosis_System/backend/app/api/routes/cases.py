@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_user
@@ -30,6 +30,10 @@ def _get_patient_profile_for_user(db: Session, user_id: int) -> PatientProfile |
 @router.post("/upload", response_model=CaseOut, status_code=status.HTTP_201_CREATED)
 def upload_case(
     file: UploadFile = File(...),
+    patient_id: str | None = Form(None),
+    age: int | None = Form(None),
+    sex: str | None = Form(None),
+    notes: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -94,6 +98,10 @@ def upload_case(
             "original_filename": filename,
             "content_type": file.content_type,
             "file_size": file_size,
+            "patient_id": patient_id,
+            "age": age,
+            "sex": sex,
+            "notes": notes,
         },
     )
 

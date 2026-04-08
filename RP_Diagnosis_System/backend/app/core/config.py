@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str = "8f4c2b1e9a7d6c5f3b2a1d9e8f7c6b5a4d3e2f1c9b8a7d6e5f4c3b2a1d9e8f"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     STORAGE_DIR: str = "app/storage/uploads"
 

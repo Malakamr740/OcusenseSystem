@@ -1,40 +1,23 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Button, Card, CardContent, CircularProgress, Stack, Typography, Alert } from "@mui/material";
+import Grid from "@mui/material/Grid";
+import { useNavigate } from "react-router-dom";
+import MainLayout from "../components/MainLayout";
+import PageHeader from "../components/PageHeader";
+import StatusBadge from "../components/StatusBadge";
 import { getAllCases } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import LoadingState from "../components/LoadingState";
-import EmptyState from "../components/EmptyState";
-import Alert from "../components/Alert";
-import StatusBadge from "../components/StatusBadge";
 
-/**
- * Professional DoctorCasesPage
- * 
- * Improves UX by:
- * - PageHeader for professional title
- * - Card-based case grid layout
- * - LoadingState & EmptyState components
- * - StatusBadge for status display
- * - Doctor-specific copy
- * - Professional case cards with hover effects
- */
 export default function DoctorCasesPage() {
-  const { token, user } = useAuth();
-
+  const { token } = useAuth();
+  const navigate = useNavigate();
   const [cases, setCases] = useState([]);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!token || user?.role !== "doctor") return;
-
-    async function loadCases() {
+    const fetchCases = async () => {
       try {
-        setLoading(true);
-        setError("");
-
         const data = await getAllCases(token);
         setCases(data);
       } catch (err) {
@@ -42,128 +25,68 @@ export default function DoctorCasesPage() {
       } finally {
         setLoading(false);
       }
+    };
+
+    if (token) {
+      fetchCases();
     }
-
-    loadCases();
-  }, [token, user]);
-
-  if (user?.role !== "doctor") {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="All Cases"
-          subtitle="Access Restricted"
-        />
-        <Alert 
-          type="warning" 
-          message="Only doctors can access the case review system."
-          dismissible={false}
-        />
-      </div>
-    );
-  }
+  }, [token]);
 
   if (loading) {
     return (
-      <div className="page-container">
-        <PageHeader 
-          title="All Cases"
-          subtitle="Review and analyze patient fundus images"
+      <MainLayout title="Doctor Cases">
+        <PageHeader
+          eyebrow="Doctor"
+          title="All cases"
+          subtitle="Review patient cases, diagnosis states, and outcomes from a cleaner clinical overview."
         />
-        <LoadingState message="Loading patient cases..." />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="All Cases"
-          subtitle="Review and analyze patient fundus images"
-        />
-        <Alert 
-          type="danger" 
-          message={error}
-          dismissible={false}
-        />
-      </div>
-    );
-  }
-
-  if (cases.length === 0) {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="All Cases"
-          subtitle="Review and analyze patient fundus images"
-        />
-        <EmptyState 
-          title="No Cases Available"
-          message="There are currently no patient cases available for review."
-        />
-      </div>
+        <Stack alignItems="center" py={8}>
+          <CircularProgress />
+        </Stack>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="page-container">
-      <PageHeader 
-        title="All Cases"
-        subtitle={`${cases.length} case${cases.length !== 1 ? 's' : ''} awaiting review`}
+    <MainLayout title="Doctor Cases">
+      <PageHeader
+        eyebrow="Doctor"
+        title="All cases"
+        subtitle="Review patient cases, diagnosis states, and outcomes from a cleaner clinical overview."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      {cases.length === 0 && !error && (
+        <Alert severity="info">No cases available at this time.</Alert>
+      )}
+
+      <Grid container spacing={3}>
         {cases.map((item) => (
-          <Card 
-            key={item.id}
-            title={`Case #${item.id}`}
-            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <StatusBadge status={item.status} />
-                <span style={{
-                  display: 'inline-block',
-                  padding: '0.25rem 0.75rem',
-                  backgroundColor: '#e3f2fd',
-                  color: '#1976d2',
-                  borderRadius: '4px',
-                  fontSize: '0.875rem',
-                  fontWeight: '500'
-                }}>
-                  {item.modality || "Fundus"}
-                </span>
-              </div>
+          <Grid key={item.id} size={{ xs: 12, md: 6, lg: 4 }}>
+            <Card>
+              <CardContent sx={{ p: 3 }}>
+                <Stack spacing={1.5}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6">{item.id}</Typography>
+                    <StatusBadge status={item.status} />
+                  </Stack>
 
-              <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                <strong>Received:</strong> {new Date(item.created_at).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
+                  <Typography color="text.secondary">
+                    Patient: {item.patient_profile_id}
+                  </Typography>
+                  <Typography>{item.status}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Last updated: {new Date(item.updated_at).toLocaleDateString()}
+                  </Typography>
 
-              {item.description && (
-                <p style={{ color: '#666', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-                  {item.description.substring(0, 100)}
-                  {item.description.length > 100 ? '...' : ''}
-                </p>
-              )}
-            </div>
-
-            <Link 
-              to={`/cases/${item.id}`} 
-              className="btn btn-primary"
-              style={{ marginTop: '1rem', textDecoration: 'none', display: 'block', textAlign: 'center' }}
-            >
-              Review Case
-            </Link>
-          </Card>
+                  <Button variant="outlined" onClick={() => navigate(`/patient/cases/${item.id}`)}>Review case</Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
         ))}
-      </div>
-    </div>
+      </Grid>
+    </MainLayout>
   );
 }

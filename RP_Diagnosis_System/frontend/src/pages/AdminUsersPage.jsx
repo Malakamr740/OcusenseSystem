@@ -1,163 +1,153 @@
 import { useEffect, useState } from "react";
 import {
-  getAllUsers,
-  updateUserStatus,
-  deleteUser,
-} from "../api";
-import { useAuth } from "../auth/AuthContext";
+  Avatar,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  Alert,
+} from "@mui/material";
+import MainLayout from "../components/MainLayout";
 import PageHeader from "../components/PageHeader";
-import Alert from "../components/Alert";
-import Card from "../components/Card";
-import LoadingState from "../components/LoadingState";
-import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
+import { getAllUsers, updateUserStatus, deleteUser } from "../api";
+import { useAuth } from "../auth/AuthContext";
 
 export default function AdminUsersPage() {
-  const { token, user } = useAuth();
-
+  const { token } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
-    if (!token || user?.role !== "admin") return;
+    const fetchUsers = async () => {
+      try {
+        const data = await getAllUsers(token);
+        setUsers(data);
+      } catch (err) {
+        setError(err.message || "Failed to load users");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    loadUsers();
-  }, [token, user]);
-
-  async function loadUsers() {
-    try {
-      setLoading(true);
-      setError("");
-      const data = await getAllUsers(token);
-      setUsers(data);
-    } catch (err) {
-      setError(err.message || "Failed to load users");
-    } finally {
-      setLoading(false);
+    if (token) {
+      fetchUsers();
     }
-  }
+  }, [token]);
 
-  async function handleToggleStatus(u) {
+  const handleStatusToggle = async (userId, currentStatus) => {
     try {
-      setActionLoading(u.id);
-      await updateUserStatus(u.id, !u.is_active, token);
-      await loadUsers();
+      await updateUserStatus(userId, !currentStatus, token);
+      setUsers(users.map((u) => (u.id === userId ? { ...u, is_active: !currentStatus } : u)));
     } catch (err) {
-      setError(err.message || "Failed to update status");
-    } finally {
-      setActionLoading(null);
+      setError(err.message || "Failed to update user status");
     }
-  }
+  };
 
-  async function handleDelete(u) {
-    if (!confirm(`Are you sure you want to delete ${u.email}? This action cannot be undone.`)) return;
-
+  const handleDelete = async (userId) => {
     try {
-      setActionLoading(u.id);
-      await deleteUser(u.id, token);
-      await loadUsers();
+      await deleteUser(userId, token);
+      setUsers(users.filter((u) => u.id !== userId));
     } catch (err) {
       setError(err.message || "Failed to delete user");
-    } finally {
-      setActionLoading(null);
     }
-  }
+  };
 
-  if (user?.role !== "admin") {
+  if (loading) {
     return (
-      <div className="page-container">
-        <Alert 
-          type="warning" 
-          message="Only administrators can access this page."
+      <MainLayout title="Admin Users">
+        <PageHeader
+          eyebrow="Admin"
+          title="Users"
+          subtitle="Review registered users, roles, and activation states in one clean table."
+          actions={<Button variant="contained">Add user</Button>}
         />
-      </div>
+        <Stack alignItems="center" py={8}>
+          <CircularProgress />
+        </Stack>
+      </MainLayout>
     );
   }
-
   return (
-    <div className="page-container">
-      <PageHeader 
-        title="User Management" 
-        subtitle="View and manage all users in the system"
+    <MainLayout title="Admin Users">
+      <PageHeader
+        eyebrow="Admin"
+        title="Users"
+        subtitle="Review registered users, roles, and activation states in one clean table."
+        actions={<Button variant="contained">Add user</Button>}
       />
 
-      {error && (
-        <Alert 
-          type="danger" 
-          message={error}
-          onClose={() => setError("")}
-          dismissible={true}
-        />
-      )}
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-      {loading ? (
-        <LoadingState message="Loading users..." />
-      ) : users.length === 0 ? (
-        <EmptyState 
-          icon="👥"
-          title="No users found"
-          description="There are no users in the system yet."
-        />
-      ) : (
-        <Card title="All Users" subtitle={`${users.length} user${users.length !== 1 ? 's' : ''} total`}>
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th className="table-th">Email</th>
-                  <th className="table-th">Role</th>
-                  <th className="table-th">Status</th>
-                  <th className="table-th">Created</th>
-                  <th className="table-th">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td className="table-td">{u.email}</td>
-                    <td className="table-td">
-                      <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="table-td">
-                      <StatusBadge status={u.is_active ? "active" : "inactive"} />
-                    </td>
-                    <td className="table-td" style={{ fontSize: '0.9rem', color: 'var(--gray-600)' }}>
-                      {new Date(u.created_at).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
-                    </td>
-                    <td className="table-td table-actions">
-                      <button
-                        className={`table-action-btn ${u.is_active ? '' : ''}`}
-                        onClick={() => handleToggleStatus(u)}
-                        disabled={actionLoading === u.id}
-                        title={u.is_active ? "Deactivate user" : "Activate user"}
+      <Card>
+        <CardContent sx={{ p: 1.5 }}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>User</TableCell>
+                  <TableCell>Role</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id} hover>
+                    <TableCell>
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        <Avatar>{user.email?.[0].toUpperCase() || "U"}</Avatar>
+                        <Stack>
+                          <Typography fontWeight={700}>{user.full_name || user.email}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {user.email}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography sx={{ textTransform: "capitalize" }}>{user.role}</Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <StatusBadge status={user.is_active ? "Active" : "Inactive"} />
+                    </TableCell>
+
+                    <TableCell align="right">
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => handleStatusToggle(user.id, user.is_active)}
                       >
-                        {actionLoading === u.id ? '...' : u.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        className="table-action-btn"
-                        onClick={() => handleDelete(u)}
-                        disabled={actionLoading === u.id}
-                        style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }}
-                        title="Delete user"
+                        {user.is_active ? "Disable" : "Enable"}
+                      </Button>
+                      <Button
+                        variant="text"
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(user.id)}
                       >
-                        {actionLoading === u.id ? '...' : 'Delete'}
-                      </button>
-                    </td>
-                  </tr>
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-    </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+    </MainLayout>
   );
 }

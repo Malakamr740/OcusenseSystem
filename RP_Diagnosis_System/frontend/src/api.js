@@ -24,6 +24,10 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && window.logout) {
+      window.logout();
+      throw new Error("Session expired. Please log in again.");
+    }
     const message =
       data?.detail ||
       data?.message ||
@@ -53,6 +57,10 @@ async function requestFormData(path, formData, token) {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && window.logout) {
+      window.logout();
+      throw new Error("Session expired. Please log in again.");
+    }
     const message =
       data?.detail ||
       data?.message ||
@@ -98,9 +106,22 @@ export async function getMe(token) {
   });
 }
 
-export async function uploadCase(file, token) {
+export async function uploadCase(file, metadata, token) {
   const formData = new FormData();
   formData.append("file", file);
+
+  if (metadata?.patient_id) {
+    formData.append("patient_id", metadata.patient_id);
+  }
+  if (metadata?.age) {
+    formData.append("age", String(metadata.age));
+  }
+  if (metadata?.sex) {
+    formData.append("sex", metadata.sex);
+  }
+  if (metadata?.notes) {
+    formData.append("notes", metadata.notes);
+  }
 
   return requestFormData("/cases/upload", formData, token);
 }

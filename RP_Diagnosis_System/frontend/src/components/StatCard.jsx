@@ -1,21 +1,34 @@
-/**
- * StatCard - Display metric/statistic card
- * 
- * Improves UX by:
- * - Professional display of key metrics
- * - Consistent styling for admin dashboards
- * - Clear visual hierarchy between value and label
- * - Icon support for visual interest
- */
-export default function StatCard({ title, value, icon, trend, className = "" }) {
+import { Avatar, Card, CardContent, Stack, Typography } from "@mui/material";
+
+export default function StatCard({ title, value, subtitle, icon }) {
   return (
-    <div className={`stat-card ${className}`}>
-      {icon && <div className="stat-card-icon">{icon}</div>}
-      <div className="stat-card-content">
-        <div className="stat-card-label">{title}</div>
-        <div className="stat-card-value">{value}</div>
-        {trend && <div className={`stat-card-trend ${trend.type}`}>{trend.text}</div>}
-      </div>
-    </div>
+    <Card>
+      <CardContent sx={{ p: 3 }}>
+        <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="flex-start">
+          <Stack spacing={0.75}>
+            <Typography variant="body2" color="text.secondary">
+              {title}
+            </Typography>
+            <Typography variant="h4">{value}</Typography>
+            {subtitle ? (
+              <Typography variant="body2" color="text.secondary">
+                {subtitle}
+              </Typography>
+            ) : null}
+          </Stack>
+
+          <Avatar
+            sx={{
+              bgcolor: "rgba(21, 94, 239, 0.08)",
+              color: "primary.main",
+              width: 48,
+              height: 48,
+            }}
+          >
+            {icon}
+          </Avatar>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,14 +1,19 @@
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
-export default function ProtectedRoute({ children }) {
-  const { token, loadingUser } = useAuth();
+export default function ProtectedRoute({ children, allowedRoles = [] }) {
+  const { token, user, loadingUser } = useAuth();
+  const location = useLocation();
 
   if (loadingUser) {
-    return <p>Loading...</p>;
+    return null; // Show loading state while fetching user
   }
 
-  if (!token) {
+  if (!token || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return <Navigate to="/login" replace />;
   }
 

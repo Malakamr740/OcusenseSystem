@@ -1,121 +1,139 @@
 import { useEffect, useState } from "react";
-import { getAdminDashboardSummary } from "../api";
-import { useAuth } from "../auth/AuthContext";
+import Grid from "@mui/material/Grid";
+import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import AutoGraphOutlinedIcon from "@mui/icons-material/AutoGraphOutlined";
+import ForumOutlinedIcon from "@mui/icons-material/ForumOutlined";
+import { Card, CardContent, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import MainLayout from "../components/MainLayout";
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
-import LoadingState from "../components/LoadingState";
-import Alert from "../components/Alert";
+import { getAdminDashboardSummary } from "../api";
+import { useAuth } from "../auth/AuthContext";
 
-/**
- * Professional AdminDashboardPage
- * 
- * Improves UX by:
- * - PageHeader for professional title
- * - StatCard components for metrics grid
- * - LoadingState component
- * - Alert for errors
- * - Professional metric display with icons
- * - Responsive grid layout
- */
 export default function AdminDashboardPage() {
-  const { token, user } = useAuth();
-
+  const { token } = useAuth();
   const [summary, setSummary] = useState(null);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token || user?.role !== "admin") return;
-
-    async function loadSummary() {
+    const fetchSummary = async () => {
       try {
-        setLoading(true);
-        setError("");
-
         const data = await getAdminDashboardSummary(token);
         setSummary(data);
       } catch (err) {
-        setError(err.message || "Failed to load admin dashboard");
+        console.error("Failed to load dashboard summary:", err);
       } finally {
         setLoading(false);
       }
+    };
+
+    if (token) {
+      fetchSummary();
     }
-
-    loadSummary();
-  }, [token, user]);
-
-  if (user?.role !== "admin") {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="Admin Dashboard"
-          subtitle="Access Restricted"
-        />
-        <Alert 
-          type="warning" 
-          message="Only administrators can access this dashboard."
-          dismissible={false}
-        />
-      </div>
-    );
-  }
+  }, [token]);
 
   if (loading) {
     return (
-      <div className="page-container">
-        <PageHeader 
-          title="Admin Dashboard"
-          subtitle="System overview and statistics"
+      <MainLayout title="Admin Dashboard">
+        <PageHeader
+          eyebrow="Admin"
+          title="System dashboard"
+          subtitle="High-level operational visibility for users, cases, models, and chatbot usage."
         />
-        <LoadingState message="Loading dashboard metrics..." />
-      </div>
+        <Stack alignItems="center" py={8}>
+          <CircularProgress />
+        </Stack>
+      </MainLayout>
     );
   }
-
-  if (error) {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="Admin Dashboard"
-          subtitle="System overview and statistics"
-        />
-        <Alert 
-          type="danger" 
-          message={error}
-          dismissible={false}
-        />
-      </div>
-    );
-  }
-
-  const metrics = summary ? [
-    { label: "Total Users", value: summary.total_users ?? 0, icon: "👥" },
-    { label: "Patients", value: summary.total_patients ?? 0, icon: "🏥" },
-    { label: "Healthcare Professionals", value: summary.total_doctors ?? 0, icon: "👨‍⚕️" },
-    { label: "Administrators", value: summary.total_admins ?? 0, icon: "⚙️" },
-    { label: "Cases", value: summary.total_cases ?? 0, icon: "📋" },
-    { label: "Reports Generated", value: summary.total_reports ?? 0, icon: "📊" },
-    { label: "Chat Sessions", value: summary.total_chat_sessions ?? 0, icon: "💬" },
-    { label: "Retargeting Sessions", value: summary.total_retargeting_sessions ?? 0, icon: "🔍" },
-  ] : [];
-
   return (
-    <div className="page-container">
-      <PageHeader 
-        title="Admin Dashboard"
-        subtitle="System overview and key statistics"
+    <MainLayout title="Admin Dashboard">
+      <PageHeader
+        eyebrow="Admin"
+        title="System dashboard"
+        subtitle="High-level operational visibility for users, cases, models, and chatbot usage."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
-        {metrics.map((metric, index) => (
-          <StatCard 
-            key={index}
-            label={metric.label}
-            value={metric.value.toLocaleString()}
-            icon={metric.icon}
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Registered users"
+            value={summary?.total_users || "0"}
+            subtitle="Across patient, doctor, and admin roles"
+            icon={<PeopleOutlineIcon />}
           />
-        ))}
-      </div>
-    </div>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Cases processed"
+            value={summary?.total_cases || "0"}
+            subtitle="Completed and pending diagnosis"
+            icon={<AssignmentOutlinedIcon />}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Active models"
+            value={summary?.total_models || "0"}
+            subtitle="Classification and segmentation models"
+            icon={<AutoGraphOutlinedIcon />}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Chat sessions"
+            value={summary?.total_chat_sessions || "0"}
+            subtitle="Assistant interactions across users"
+            icon={<ForumOutlinedIcon />}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Admin focus
+              </Typography>
+
+              <Stack spacing={1.25}>
+                <Typography color="text.secondary">
+                  • Confirm user and profile consistency before demo runs.
+                </Typography>
+                <Typography color="text.secondary">
+                  • Verify model registry records and default settings availability.
+                </Typography>
+                <Typography color="text.secondary">
+                  • Keep reports, Grad-CAM, and segmentation review visually clean.
+                </Typography>
+                <Typography color="text.secondary">
+                  • Standardize system messages and feedback across the platform.
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                System health
+              </Typography>
+
+              <Stack spacing={1.5}>
+                <Chip label="API connected" color="success" variant="outlined" sx={{ width: "fit-content" }} />
+                <Chip label={`${summary?.total_models || 0} models registered`} color="primary" variant="outlined" sx={{ width: "fit-content" }} />
+                <Chip label="Reports enabled" color="success" variant="outlined" sx={{ width: "fit-content" }} />
+                <Chip label="Chatbot available" color="primary" variant="outlined" sx={{ width: "fit-content" }} />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </MainLayout>
   );
 }

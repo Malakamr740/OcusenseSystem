@@ -1,141 +1,141 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Container,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
+import { Link, useSearchParams } from "react-router-dom";
 import { resetPassword } from "../api";
-import FormField from "../components/FormField";
-import Alert from "../components/Alert";
-import Card from "../components/Card";
 
-/**
- * Professional ResetPasswordPage
- * 
- * Improves UX by:
- * - FormField components for password inputs
- * - Professional Alert messages
- * - Password matching validation
- * - Clear success state with login link
- */
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const token = searchParams.get("token") || "";
 
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [errors, setErrors] = useState({});
+  const [form, setForm] = useState({
+    password: "",
+    confirm: "",
+  });
 
+  const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrors({});
+    setError("");
+
+    if (form.password !== form.confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
 
     if (!token) {
-      setError("Reset token is missing or invalid.");
+      setError("Invalid or missing reset token. Please request a new password reset.");
       return;
     }
 
-    if (newPassword.length < 8) {
-      setErrors({ password: "Password must be at least 8 characters" });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setErrors({ confirm: "Passwords do not match" });
-      return;
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
-      setError("");
-      setSuccess("");
-
-      const data = await resetPassword(token, newPassword);
-      setSuccess(data.message || "Password reset successfully! You can now log in with your new password.");
-      setNewPassword("");
-      setConfirmPassword("");
+      await resetPassword(token, form.password);
+      setDone(true);
     } catch (err) {
-      setError(err.message || "Failed to reset password");
+      setError(err.message || "Password reset failed. Please try again.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="page-container auth-page">
-      <Card 
-        title="Reset Your Password" 
-        subtitle="Enter your new password below"
-      >
-        {!token && (
-          <Alert 
-            type="danger" 
-            message="Reset token is missing or invalid. Please request a new password reset link."
-            dismissible={false}
-          />
-        )}
+    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", px: 2, py: 5 }}>
+      <Container maxWidth="lg">
+        <Stack direction={{ xs: "column", lg: "row" }} spacing={4} alignItems="stretch">
+          <Box sx={{ flex: 1, display: "flex", alignItems: "center", pr: { lg: 4 } }}>
+            <Box>
+              <Chip
+                label="Set a new password"
+                color="primary"
+                variant="outlined"
+                sx={{ mb: 2, bgcolor: "white" }}
+              />
+              <Typography variant="h3" sx={{ mb: 2, fontSize: { xs: 36, md: 56 } }}>
+                New password
+              </Typography>
+              <Typography
+                variant="h6"
+                color="text.secondary"
+                sx={{ maxWidth: 640, lineHeight: 1.8, mb: 3 }}
+              >
+                Choose a new secure password for your account.
+              </Typography>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <MonitorHeartOutlinedIcon color="primary" />
+                <Typography color="text.secondary">
+                  This page should later consume the reset token from your backend flow.
+                </Typography>
+              </Stack>
+            </Box>
+          </Box>
 
-        {error && (
-          <Alert 
-            type="danger" 
-            message={error}
-            onClose={() => setError("")}
-            dismissible={true}
-          />
-        )}
+          <Card sx={{ flex: 1, maxWidth: 560, width: "100%", ml: { lg: "auto" } }}>
+            <CardContent sx={{ p: { xs: 3, md: 5 } }}>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                Update password
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 4, lineHeight: 1.7 }}>
+                Enter and confirm your new password.
+              </Typography>
 
-        {success && (
-          <div>
-            <Alert 
-              type="success" 
-              message={success}
-              dismissible={false}
-            />
-            <Link 
-              to="/login" 
-              className="btn btn-primary w-100" 
-              style={{ marginTop: '1.5rem', textDecoration: 'none', display: 'block', textAlign: 'center' }}
-            >
-              Go to Login
-            </Link>
-          </div>
-        )}
+              <Stack spacing={2.5}>
+                {done ? (
+                  <Alert severity="success">
+                    Password updated successfully. You can now sign in.
+                  </Alert>
+                ) : null}
+                {error ? <Alert severity="error">{error}</Alert> : null}
 
-        {token && !success && (
-          <form onSubmit={handleSubmit} style={{ marginTop: '2rem' }}>
-            <FormField
-              id="newPassword"
-              label="New Password"
-              type="password"
-              placeholder="Enter at least 8 characters"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              error={errors.password}
-              required
-            />
+                <TextField
+                  label="New password"
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  disabled={loading || done}
+                />
 
-            <FormField
-              id="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              placeholder="Re-enter your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              error={errors.confirm}
-              required
-            />
+                <TextField
+                  label="Confirm password"
+                  type="password"
+                  value={form.confirm}
+                  onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                  disabled={loading || done}
+                />
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg w-100"
-              disabled={loading}
-              style={{ marginTop: '2rem' }}
-            >
-              {loading ? "Resetting..." : "Reset Password"}
-            </button>
-          </form>
-        )}
-      </Card>
-    </div>
+                <Button variant="contained" onClick={handleSubmit} disabled={loading || done}>
+                  {loading ? <CircularProgress size={20} /> : "Update password"}
+                </Button>
+
+                <Typography color="text.secondary">
+                  Back to <Link to="/login">Sign in</Link>
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Stack>
+      </Container>
+    </Box>
   );
 }

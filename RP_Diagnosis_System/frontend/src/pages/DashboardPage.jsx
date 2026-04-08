@@ -1,171 +1,142 @@
-import { Link } from "react-router";
-import { useAuth } from "../auth/AuthContext";
+import Grid from "@mui/material/Grid";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import AutoGraphOutlinedIcon from "@mui/icons-material/AutoGraphOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import ForumOutlinedIcon from "@mui/icons-material/ForumOutlined";
+import { Card, CardContent, Stack, Typography, Button } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import MainLayout from "../components/MainLayout";
 import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
+import StatCard from "../components/StatCard";
+import { useAuth } from "../auth/AuthContext";
 
-/**
- * Professional DashboardPage with role-based quick actions
- * 
- * Improves UX by:
- * - Clear visual hierarchy with professional header
- * - Role-specific action cards with icons
- * - Better button styling and layout
- * - Professional spacing and typography
- * - Quick access to key features
- */
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
+  const subtitle =
+    user?.role === "doctor"
+      ? "Review retinal cases, open reports, and use the assistant from one clean workspace."
+      : user?.role === "admin"
+      ? "Monitor platform activity, models, and user operations from the admin workspace."
+      : "Manage your uploaded cases, diagnosis results, reports, and assistant access from one place.";
 
   return (
-    <div className="page-container">
-      <PageHeader 
-        title={`${getGreeting()}, ${user?.email?.split('@')[0] || 'User'}`}
-        subtitle={`Role: ${user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1) || 'Guest'}`}
+    <MainLayout title="Dashboard">
+      <PageHeader
+        eyebrow="Overview"
+        title="Workspace dashboard"
+        subtitle={subtitle}
       />
 
-      {user?.role === "patient" && <PatientDashboard />}
-      {user?.role === "doctor" && <DoctorDashboard />}
-      {user?.role === "admin" && <AdminDashboard />}
-    </div>
-  );
-}
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Cases"
+            value="12"
+            subtitle="Uploaded and tracked in the system"
+            icon={<AssignmentOutlinedIcon />}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Predictions"
+            value="9"
+            subtitle="Completed diagnosis runs"
+            icon={<AutoGraphOutlinedIcon />}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Reports"
+            value="7"
+            subtitle="Generated PDF summaries"
+            icon={<DescriptionOutlinedIcon />}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
+          <StatCard
+            title="Assistant sessions"
+            value="18"
+            subtitle="Chatbot interactions"
+            icon={<ForumOutlinedIcon />}
+          />
+        </Grid>
 
-function PatientDashboard() {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-      <ActionCard 
-        icon="📤"
-        title="Upload Case"
-        description="Submit a new case for diagnosis"
-        to="/upload-case"
-        ctaText="Upload Now"
-      />
-      <ActionCard 
-        icon="📋"
-        title="My Cases"
-        description="View and manage your submitted cases"
-        to="/my-cases"
-        ctaText="View Cases"
-      />
-      <ActionCard 
-        icon="💬"
-        title="Chatbot Assistant"
-        description="Chat with AI for guidance and questions"
-        to="/chatbot"
-        ctaText="Start Chat"
-      />
-      <ActionCard 
-        icon="📊"
-        title="Reports"
-        description="View your diagnosis reports"
-        to="#"
-        ctaText="Coming Soon"
-        disabled={true}
-      />
-    </div>
-  );
-}
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Quick actions
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
+                {user?.role === "patient" && (
+                  <>
+                    <Button variant="contained" onClick={() => navigate("/patient/upload")}>
+                      Upload new case
+                    </Button>
+                    <Button variant="outlined" onClick={() => navigate("/patient/cases")}>
+                      View my cases
+                    </Button>
+                  </>
+                )}
 
-function DoctorDashboard() {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-      <ActionCard 
-        icon="🔍"
-        title="All Cases"
-        description="Review and diagnose patient cases"
-        to="/doctor/cases"
-        ctaText="View Cases"
-      />
-      <ActionCard 
-        icon="📄"
-        title="Reports"
-        description="Access generated diagnosis reports"
-        to="/doctor/reports"
-        ctaText="View Reports"
-      />
-      <ActionCard 
-        icon="💬"
-        title="Chatbot Assistant"
-        description="AI-powered assistant for medical queries"
-        to="/chatbot"
-        ctaText="Start Chat"
-      />
-    </div>
-  );
-}
+                {user?.role === "doctor" && (
+                  <>
+                    <Button variant="contained" onClick={() => navigate("/doctor/cases")}>
+                      Review cases
+                    </Button>
+                    <Button variant="outlined" onClick={() => navigate("/doctor/reports")}>
+                      Open reports
+                    </Button>
+                  </>
+                )}
 
-function AdminDashboard() {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-      <ActionCard 
-        icon="📊"
-        title="Dashboard"
-        description="View system statistics and metrics"
-        to="/admin/dashboard"
-        ctaText="View Stats"
-      />
-      <ActionCard 
-        icon="👥"
-        title="User Management"
-        description="Manage users, roles, and permissions"
-        to="/admin/users"
-        ctaText="Manage Users"
-      />
-      <ActionCard 
-        icon="⚙️"
-        title="Settings"
-        description="Configure system settings"
-        to="/admin/settings"
-        ctaText="Edit Settings"
-      />
-      <ActionCard 
-        icon="🧠"
-        title="Model Registry"
-        description="Manage AI models and versions"
-        to="/admin/models"
-        ctaText="Manage Models"
-      />
-      <ActionCard 
-        icon="💬"
-        title="Chatbot Assistant"
-        description="AI support for admin tasks"
-        to="/chatbot"
-        ctaText="Start Chat"
-      />
-    </div>
-  );
-}
+                {user?.role === "admin" && (
+                  <>
+                    <Button variant="contained" onClick={() => navigate("/admin/dashboard")}>
+                      Open admin dashboard
+                    </Button>
+                    <Button variant="outlined" onClick={() => navigate("/admin/users")}>
+                      Manage users
+                    </Button>
+                    <Button variant="outlined" onClick={() => navigate("/patient/upload")}>
+                      Upload case
+                    </Button>
+                    <Button variant="outlined" onClick={() => navigate("/patient/cases")}>
+                      View patient cases
+                    </Button>
+                    <Button variant="outlined" onClick={() => navigate("/doctor/cases")}>
+                      Review all cases
+                    </Button>
+                    <Button variant="outlined" onClick={() => navigate("/doctor/reports")}>
+                      Open reports
+                    </Button>
+                  </>
+                )}
 
-function ActionCard({ icon, title, description, to, ctaText, disabled = false }) {
-  return (
-    <Card>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '1rem' }}>
-        <div style={{ fontSize: '2.5rem' }}>{icon}</div>
-        <div>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', color: 'var(--gray-900)' }}>
-            {title}
-          </h3>
-          <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--gray-600)' }}>
-            {description}
-          </p>
-        </div>
-        <div style={{ marginTop: 'auto' }}>
-          <Link 
-            to={to} 
-            className={`btn ${disabled ? 'btn-secondary' : 'btn-primary'}`}
-            style={{ width: '100%', textDecoration: 'none', textAlign: 'center', display: 'block', marginTop: '1rem' }}
-          >
-            {ctaText}
-          </Link>
-        </div>
-      </div>
-    </Card>
+                <Button variant="outlined" onClick={() => navigate("/chatbot")}>
+                  Open chatbot
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" sx={{ mb: 1.5 }}>
+                Notes
+              </Typography>
+              <Typography color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                This dashboard is designed to give each role a clear starting point with less visual clutter
+                and faster access to the main clinical and administrative workflows.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </MainLayout>
   );
 }

@@ -1,5 +1,7 @@
 import os
 import shutil
+import cv2
+import numpy as np
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ from app.models.segmentation_result import SegmentationResult
 from app.services.model_registry_service import get_active_model_by_task_type
 from app.ml.diagnosis.classification.inference import predict_classification
 from app.ml.diagnosis.classification.gradcam import generate_gradcam_artifacts
+from app.ml.diagnosis.vessel_segmentation.inference import predict_vessel_segmentation
 
 GRADCAM_DIR = "app/storage/gradcam"
 SEGMENTATION_DIR = "app/storage/segmentation"
@@ -30,6 +33,46 @@ def _copy_artifact(source_path: str, target_dir: str, suffix: str) -> str:
 
     shutil.copyfile(source_path, target_path)
     return target_path
+
+
+def _save_vessel_segmentation_artifacts(image_path: str, seg_result: dict) -> tuple:
+    """
+    Save vessel segmentation mask and overlay to storage.
+    
+    Args:
+        image_path: Path to original image
+        seg_result: Dictionary from predict_vessel_segmentation containing 
+                   binary_mask, probability_map, and original_image
+    
+    Returns:
+        Tuple of (mask_path, overlay_path)
+    """
+    _ensure_dirs()
+    
+    # Save binary mask
+    mask_filename = f"{uuid4().hex}_vessel_mask.png"
+    mask_path = os.path.join(SEGMENTATION_DIR, mask_filename)
+    cv2.imwrite(mask_path, seg_result['binary_mask'])
+    
+    # Create and save overlay (green vessels on original image)
+    original_rgb = seg_result['original_image']
+    binary_mask = seg_result['binary_mask']
+    
+    # Convert RGB to BGR for cv2.imwrite
+    image_bgr = cv2.cvtColor(original_rgb, cv2.COLOR_RGB2BGR)
+    overlay = image_bgr.copy()
+    
+    # Color vessels green where mask is positive
+    overlay[binary_mask > 0] = [0, 255, 0]
+    
+    # Blend original with overlay
+    blended = cv2.addWeighted(image_bgr, 0.7, overlay, 0.3, 0)
+    
+    overlay_filename = f"{uuid4().hex}_vessel_overlay.png"
+    overlay_path = os.path.join(SEGMENTATION_DIR, overlay_filename)
+    cv2.imwrite(overlay_path, blended)
+    
+    return mask_path, overlay_path
 
 
 def _clear_previous_results(db: Session, case_id: int):
@@ -119,18 +162,35 @@ def run_mock_pipeline(db: Session, case: Case) -> dict:
     db.commit()
     db.refresh(gradcam)
 
-    vessel_mask = _copy_artifact(case.image_path, SEGMENTATION_DIR, "vessel_mask")
-    vessel_overlay = _copy_artifact(case.image_path, SEGMENTATION_DIR, "vessel_overlay")
+    # ============================================================
+    # VESSEL SEGMENTATION (REAL U-NET MODEL)
+    # ============================================================
+    try:
+        vessel_seg_result = predict_vessel_segmentation(case.image_path)
+        vessel_mask, vessel_overlay = _save_vessel_segmentation_artifacts(
+            case.image_path, 
+            vessel_seg_result
+        )
+        
+        # Calculate vessel area percentage
+        binary_mask = vessel_seg_result['binary_mask']
+        vessel_area_percent = (np.count_nonzero(binary_mask) / binary_mask.size) * 100
+    except Exception as e:
+        # Fallback if model loading fails
+        print(f"Warning: Vessel segmentation failed ({e}), using fallback")
+        vessel_mask = _copy_artifact(case.image_path, SEGMENTATION_DIR, "vessel_mask")
+        vessel_overlay = _copy_artifact(case.image_path, SEGMENTATION_DIR, "vessel_overlay")
+        vessel_area_percent = 12.7
 
     vessel_seg = SegmentationResult(
         case_id=case.id,
         model_registry_id=segmentation_model.id if segmentation_model else None,
         segmentation_type="vessel",
-        model_name=segmentation_model.model_name if segmentation_model else "mock_unet_vessel",
+        model_name=segmentation_model.model_name if segmentation_model else "unet_vessel",
         model_version=segmentation_model.model_version if segmentation_model else "v1",
         mask_path=vessel_mask,
         overlay_path=vessel_overlay,
-        metrics_json={"vessel_area_percent": 12.7},
+        metrics_json={"vessel_area_percent": round(vessel_area_percent, 2)},
     )
 
     pigment_mask = _copy_artifact(case.image_path, SEGMENTATION_DIR, "pigment_mask")

@@ -1,96 +1,110 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Container,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
+import { Link } from "react-router-dom";
 import { forgotPassword } from "../api";
-import FormField from "../components/FormField";
-import Alert from "../components/Alert";
-import Card from "../components/Card";
 
-/**
- * Professional ForgotPasswordPage
- * 
- * Improves UX by:
- * - FormField component for consistent input styling
- * - Professional Alert messages
- * - Clear instruction text
- * - Link back to login
- */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      setLoading(true);
-      setError("");
-      setSuccess("");
-
-      const data = await forgotPassword(email);
-      setSuccess(
-        data.message || "If the account exists, a password reset email has been sent. Check your inbox."
-      );
+      await forgotPassword(email);
+      setSent(true);
     } catch (err) {
-      setError(err.message || "Failed to request password reset");
+      setError(err.message || "Failed to send reset link. Please try again.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="page-container auth-page">
-      <Card 
-        title="Forgot Your Password?" 
-        subtitle="Enter your email to receive a password reset link"
-      >
-        {error && (
-          <Alert 
-            type="danger" 
-            message={error}
-            onClose={() => setError("")}
-            dismissible={true}
-          />
-        )}
-        {success && (
-          <Alert 
-            type="success" 
-            message={success}
-            dismissible={false}
-          />
-        )}
+    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", px: 2, py: 5 }}>
+      <Container maxWidth="lg">
+        <Stack direction={{ xs: "column", lg: "row" }} spacing={4} alignItems="stretch">
+          <Box sx={{ flex: 1, display: "flex", alignItems: "center", pr: { lg: 4 } }}>
+            <Box>
+              <Chip
+                label="Account recovery"
+                color="primary"
+                variant="outlined"
+                sx={{ mb: 2, bgcolor: "white" }}
+              />
+              <Typography variant="h3" sx={{ mb: 2, fontSize: { xs: 36, md: 56 } }}>
+                Reset password
+              </Typography>
+              <Typography
+                variant="h6"
+                color="text.secondary"
+                sx={{ maxWidth: 640, lineHeight: 1.8, mb: 3 }}
+              >
+                Enter your email to receive a secure reset link.
+              </Typography>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <MonitorHeartOutlinedIcon color="primary" />
+                <Typography color="text.secondary">
+                  Password reset should connect to your FastAPI email flow later.
+                </Typography>
+              </Stack>
+            </Box>
+          </Box>
 
-        {!success && (
-          <form onSubmit={handleSubmit} style={{ marginTop: '2rem' }}>
-            <FormField
-              id="email"
-              label="Email Address"
-              type="email"
-              placeholder="your.email@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              help="We'll send a password reset link to this email"
-            />
+          <Card sx={{ flex: 1, maxWidth: 560, width: "100%", ml: { lg: "auto" } }}>
+            <CardContent sx={{ p: { xs: 3, md: 5 } }}>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                Forgot your password?
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 4, lineHeight: 1.7 }}>
+                We will send a reset link to the registered email address.
+              </Typography>
 
-            <button 
-              type="submit" 
-              className="btn btn-primary btn-lg w-100" 
-              disabled={loading}
-              style={{ marginTop: '2rem' }}
-            >
-              {loading ? "Sending..." : "Send Reset Link"}
-            </button>
-          </form>
-        )}
+              <Stack spacing={2.5}>
+                {sent ? <Alert severity="success">Password reset link sent successfully.</Alert> : null}
+                {error ? <Alert severity="error">{error}</Alert> : null}
 
-        <div style={{ marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid var(--gray-200)', paddingTop: '1.5rem' }}>
-          <Link to="/login" style={{ color: 'var(--primary-color)', fontWeight: '600', textDecoration: 'none' }}>
-            Back to Login
-          </Link>
-        </div>
-      </Card>
-    </div>
+                <TextField
+                  label="Email address"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
+
+                <Typography variant="body2" color="text.secondary">
+                  Use the same email you registered with on the platform.
+                </Typography>
+
+                <Button variant="contained" onClick={handleSubmit} disabled={loading || sent}>
+                  {loading ? <CircularProgress size={20} /> : "Send reset link"}
+                </Button>
+
+                <Typography color="text.secondary">
+                  Back to <Link to="/login">Sign in</Link>
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Stack>
+      </Container>
+    </Box>
   );
 }

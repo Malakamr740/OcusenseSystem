@@ -1,352 +1,343 @@
 import { useEffect, useState } from "react";
 import {
-  getAllModels,
-  createModel,
-  updateModel,
-  deleteModel,
-} from "../api";
-import { useAuth } from "../auth/AuthContext";
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Switch,
+  FormControlLabel,
+  Box,
+  IconButton,
+  Tooltip,
+} from "@mui/material";
+import ToggleOnOutlinedIcon from "@mui/icons-material/ToggleOnOutlined";
+import ToggleOffOutlinedIcon from "@mui/icons-material/ToggleOffOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import MainLayout from "../components/MainLayout";
 import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import FormField from "../components/FormField";
-import DataTable from "../components/DataTable";
-import Alert from "../components/Alert";
-import LoadingState from "../components/LoadingState";
 import StatusBadge from "../components/StatusBadge";
+import { getAllModels, deleteModel, createModel, updateModel } from "../api";
+import { useAuth } from "../auth/AuthContext";
 
-/**
- * Professional AdminModelsPage
- * 
- * Improves UX by:
- * - PageHeader for professional title
- * - Two Card sections: form (add/edit) and table (list)
- * - FormField components for all inputs
- * - DataTable component for model list
- * - Professional Alert messages
- * - Loading state handling
- * - StatusBadge for active/inactive status
- */
-export default function AdminModelsPage() {
-  const { token, user } = useAuth();
+const defaultModelForm = {
+  task_type: "classification",
+  model_name: "",
+  model_version: "",
+  framework: "",
+  is_active: true,
+  notes: "",
+};
 
+export default function AdminModelRegistryPage() {
+  const { token } = useAuth();
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [formErrors, setFormErrors] = useState({});
-
-  const [editingId, setEditingId] = useState(null);
-
-  const [form, setForm] = useState({
-    task_type: "",
-    model_name: "",
-    model_version: "",
-    framework: "",
-    is_active: true,
-    notes: "",
-  });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [modelForm, setModelForm] = useState(defaultModelForm);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [confirmAction, setConfirmAction] = useState("");
 
   useEffect(() => {
-    if (!token || user?.role !== "admin") return;
-    loadModels();
-  }, [token, user]);
-
-  async function loadModels() {
-    try {
-      setLoading(true);
-      setError("");
-      const data = await getAllModels(token);
-      setModels(data);
-    } catch (err) {
-      setError(err.message || "Failed to load models");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function resetForm() {
-    setForm({
-      task_type: "",
-      model_name: "",
-      model_version: "",
-      framework: "",
-      is_active: true,
-      notes: "",
-    });
-    setEditingId(null);
-    setFormErrors({});
-  }
-
-  function handleChange(e) {
-    const { name, value, type, checked } = e.target;
-    setForm({
-      ...form,
-      [name]: type === "checkbox" ? checked : value,
-    });
-    if (formErrors[name]) {
-      setFormErrors({ ...formErrors, [name]: "" });
-    }
-    if (error) setError("");
-  }
-
-  function handleEdit(model) {
-    setEditingId(model.id);
-    setForm({
-      task_type: model.task_type || "",
-      model_name: model.model_name || "",
-      model_version: model.model_version || "",
-      framework: model.framework || "",
-      is_active: model.is_active ?? true,
-      notes: model.notes || "",
-    });
-    setSuccess("");
-    setError("");
-    setFormErrors({});
-  }
-
-  const validateForm = () => {
-    const errors = {};
-    if (!form.task_type.trim()) {
-      errors.task_type = "Task type is required.";
-    }
-    if (!form.model_name.trim()) {
-      errors.model_name = "Model name is required.";
-    }
-    if (!form.model_version.trim()) {
-      errors.model_version = "Model version is required.";
-    }
-    return errors;
-  };
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      setError("Please fix the errors below before saving.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-
-      if (editingId) {
-        await updateModel(editingId, form, token);
-        setSuccess("Model updated successfully.");
-      } else {
-        await createModel(form, token);
-        setSuccess("Model created successfully.");
+    const fetchModels = async () => {
+      try {
+        const data = await getAllModels(token);
+        setModels(data);
+      } catch (err) {
+        setError(err.message || "Failed to load models");
+      } finally {
+        setLoading(false);
       }
+    };
 
-      resetForm();
-      await loadModels();
-    } catch (err) {
-      setError(err.message || "Failed to save model");
-    } finally {
-      setSaving(false);
+    if (token) {
+      fetchModels();
     }
-  }
+  }, [token]);
 
-  async function handleDelete(modelId) {
-    if (!confirm("Are you sure you want to delete this model?")) return;
-
+  const handleDelete = async (modelId) => {
     try {
-      setError("");
-      setSuccess("");
-
       await deleteModel(modelId, token);
-      setSuccess("Model deleted successfully.");
-      await loadModels();
+      setModels(models.filter((m) => m.id !== modelId));
     } catch (err) {
       setError(err.message || "Failed to delete model");
     }
-  }
+  };
 
-  if (user?.role !== "admin") {
+  const openConfirmToggle = (model) => {
+    setSelectedModel(model);
+    setConfirmAction(model.is_active ? "deactivate" : "activate");
+    setConfirmOpen(true);
+  };
+
+  const closeConfirm = () => {
+    setConfirmOpen(false);
+    setSelectedModel(null);
+    setConfirmAction("");
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!selectedModel) return;
+    try {
+      const updatedModel = await updateModel(
+        selectedModel.id,
+        { is_active: !selectedModel.is_active },
+        token
+      );
+      setModels((current) =>
+        current.map((item) => (item.id === updatedModel.id ? updatedModel : item))
+      );
+      closeConfirm();
+    } catch (err) {
+      setError(err.message || "Failed to update model status");
+      closeConfirm();
+    }
+  };
+
+  const openDialog = () => {
+    setFormError("");
+    setModelForm(defaultModelForm);
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+  };
+
+  const handleFormChange = (field, value) => {
+    setModelForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleSubmitModel = async () => {
+    setFormError("");
+    setSaving(true);
+    try {
+      const newModel = await createModel(modelForm, token);
+      setModels((current) => [newModel, ...current]);
+      closeDialog();
+    } catch (err) {
+      setFormError(err.message || "Failed to register new model");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="page-container">
-        <PageHeader 
-          title="Model Registry"
-          subtitle="Access Restricted"
+      <MainLayout title="Model Registry">
+        <PageHeader
+          eyebrow="Admin"
+          title="Model registry"
+          subtitle="Track deployed model names, versions, purposes, and operational status."
+          actions={
+            <Button variant="contained" onClick={openDialog}>
+              Register model
+            </Button>
+          }
         />
-        <Alert 
-          type="warning" 
-          message="Only administrators can manage the model registry."
-          dismissible={false}
-        />
-      </div>
+        <Stack alignItems="center" py={8}>
+          <CircularProgress />
+        </Stack>
+      </MainLayout>
     );
   }
-
-  const tableColumns = [
-    { key: "task_type", label: "Task Type" },
-    { key: "model_name", label: "Model Name" },
-    { key: "model_version", label: "Version" },
-    { key: "framework", label: "Framework" },
-    { key: "is_active", label: "Status", render: (value) => (
-      <StatusBadge status={value ? "active" : "inactive"} />
-    )},
-  ];
-
-  const tableActions = [
-    {
-      label: "Edit",
-      onClick: (model) => handleEdit(model),
-      variant: "primary",
-    },
-    {
-      label: "Delete",
-      onClick: (model) => handleDelete(model.id),
-      variant: "danger",
-    },
-  ];
-
   return (
-    <div className="page-container">
-      <PageHeader 
-        title="Model Registry"
-        subtitle="Manage ML models and their configurations"
+    <MainLayout title="Model Registry">
+      <PageHeader
+        eyebrow="Admin"
+        title="Model registry"
+        subtitle="Track deployed model names, versions, purposes, and operational status."
+        actions={
+          <Button variant="contained" onClick={openDialog}>
+            Register model
+          </Button>
+        }
       />
 
-      {error && (
-        <Alert 
-          type="danger" 
-          message={error}
-          dismissible={true}
-          onDismiss={() => setError("")}
-        />
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      {models.length === 0 && !error && (
+        <Alert severity="info">No models registered yet.</Alert>
       )}
 
-      {success && (
-        <Alert 
-          type="success" 
-          message={success}
-          dismissible={true}
-          onDismiss={() => setSuccess("")}
-        />
-      )}
+      <Card>
+        <CardContent sx={{ p: 1.5 }}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Model</TableCell>
+                  <TableCell>Version</TableCell>
+                  <TableCell>Purpose</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
 
-      <Card title={editingId ? "Edit Model" : "Add New Model"}>
-        <form onSubmit={handleSubmit}>
-          <FormField
-            label="Task Type"
-            type="text"
-            name="task_type"
-            placeholder="e.g., classification, segmentation"
-            value={form.task_type}
-            onChange={handleChange}
-            error={formErrors.task_type}
-            required
-            helpText="Type of machine learning task (classification / segmentation / detection)"
-          />
+              <TableBody>
+                {models.map((row) => (
+                  <TableRow key={`${row.id}`} hover>
+                    <TableCell>
+                      <Typography fontWeight={700}>{row.model_name}</Typography>
+                      {row.framework ? (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {row.framework}
+                        </Typography>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>{row.model_version}</TableCell>
+                    <TableCell>{row.task_type}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={row.is_active ? "Active" : "Inactive"} />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title={row.is_active ? "Deactivate model" : "Activate model"}>
+                        <IconButton
+                          size="small"
+                          onClick={() => openConfirmToggle(row)}
+                          sx={{
+                            color: row.is_active ? "#16a34a" : "#dc2626",
+                          }}
+                        >
+                          {row.is_active ? (
+                            <ToggleOnOutlinedIcon />
+                          ) : (
+                            <ToggleOffOutlinedIcon />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                      <Button variant="text" size="small" color="error" onClick={() => handleDelete(row.id)}>
+                        <DeleteOutlineIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
 
-          <FormField
-            label="Model Name"
-            type="text"
-            name="model_name"
-            placeholder="e.g., ResNet50, U-Net"
-            value={form.model_name}
-            onChange={handleChange}
-            error={formErrors.model_name}
-            required
-            helpText="Name identifier for the model"
-          />
-
-          <FormField
-            label="Model Version"
-            type="text"
-            name="model_version"
-            placeholder="e.g., 1.0.0"
-            value={form.model_version}
-            onChange={handleChange}
-            error={formErrors.model_version}
-            required
-            helpText="Version number (semantic versioning recommended)"
-          />
-
-          <FormField
-            label="Framework"
-            type="text"
-            name="framework"
-            placeholder="e.g., PyTorch, TensorFlow, ONNX"
-            value={form.framework}
-            onChange={handleChange}
-            helpText="ML framework used (PyTorch / TensorFlow / ONNX / etc.)"
-          />
-
-          <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center' }}>
-            <input
-              type="checkbox"
-              id="is_active"
-              name="is_active"
-              checked={form.is_active}
-              onChange={handleChange}
-              style={{ marginRight: '0.5rem', width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            <label htmlFor="is_active" style={{ cursor: 'pointer', fontWeight: '500', color: '#333' }}>
-              Model is Active
-            </label>
-            <span style={{ fontSize: '0.875rem', color: '#666', marginLeft: '0.5rem' }}>
-              Active models are available for prediction tasks
-            </span>
-          </div>
-
-          <FormField
-            label="Notes"
-            type="textarea"
-            name="notes"
-            placeholder="Enter any additional notes about this model..."
-            value={form.notes}
-            onChange={handleChange}
-            rows="4"
-            helpText="Additional documentation or implementation notes"
-          />
-
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button 
-              type="submit" 
-              className="btn btn-primary"
-              disabled={saving}
-              style={{ flex: '1', minWidth: '150px' }}
-            >
-              {saving ? "Saving..." : (editingId ? "Update Model" : "Create Model")}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={resetForm}
-                disabled={saving}
-                style={{ flex: '1', minWidth: '150px' }}
+      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Register new model</DialogTitle>
+        <DialogContent>
+          {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel id="task-type-label">Task type</InputLabel>
+              <Select
+                labelId="task-type-label"
+                value={modelForm.task_type}
+                label="Task type"
+                onChange={(event) => handleFormChange("task_type", event.target.value)}
               >
-                Cancel Edit
-              </button>
+                <MenuItem value="classification">Classification</MenuItem>
+                <MenuItem value="severity">Severity</MenuItem>
+                <MenuItem value="gradcam">GradCAM</MenuItem>
+                <MenuItem value="segmentation">Segmentation</MenuItem>
+                <MenuItem value="retargeting">Retargeting</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Model name"
+              value={modelForm.model_name}
+              onChange={(event) => handleFormChange("model_name", event.target.value)}
+              fullWidth
+              required
+            />
+
+            <TextField
+              label="Model version"
+              value={modelForm.model_version}
+              onChange={(event) => handleFormChange("model_version", event.target.value)}
+              fullWidth
+              required
+            />
+
+            <TextField
+              label="Framework"
+              value={modelForm.framework}
+              onChange={(event) => handleFormChange("framework", event.target.value)}
+              fullWidth
+            />
+
+            <TextField
+              label="Notes"
+              value={modelForm.notes}
+              onChange={(event) => handleFormChange("notes", event.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={modelForm.is_active}
+                  onChange={(event) => handleFormChange("is_active", event.target.checked)}
+                />
+              }
+              label="Active"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDialog} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmitModel} variant="contained" disabled={saving}>
+            {saving ? "Registering..." : "Register model"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmOpen} onClose={closeConfirm} fullWidth maxWidth="xs">
+        <DialogTitle>
+          {confirmAction === "deactivate" ? "Confirm deactivation" : "Confirm activation"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {selectedModel ? (
+              `Are you sure you want to ${confirmAction} the model "${selectedModel.model_name}"?`
+            ) : (
+              "Are you sure you want to change the model status?"
             )}
-          </div>
-        </form>
-      </Card>
-
-      <Card title="All Models" style={{ marginTop: '2rem' }}>
-        {loading && <LoadingState message="Loading models..." />}
-
-        {!loading && models.length === 0 && (
-          <p style={{ color: '#666', padding: '2rem', textAlign: 'center' }}>
-            No models registered yet. Create your first model above.
-          </p>
-        )}
-
-        {!loading && models.length > 0 && (
-          <DataTable 
-            columns={tableColumns}
-            data={models}
-            actions={tableActions}
-          />
-        )}
-      </Card>
-    </div>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeConfirm}>Cancel</Button>
+          <Button onClick={handleConfirmToggle} variant="contained">
+            {confirmAction === "deactivate" ? "Deactivate" : "Activate"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </MainLayout>
   );
 }

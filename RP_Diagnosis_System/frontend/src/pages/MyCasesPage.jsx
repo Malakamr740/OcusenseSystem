@@ -1,169 +1,95 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Button, Card, CardContent, CircularProgress, Stack, Typography, Alert } from "@mui/material";
+import Grid from "@mui/material/Grid";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import { Link } from "react-router-dom";
+import MainLayout from "../components/MainLayout";
+import PageHeader from "../components/PageHeader";
+import StatusBadge from "../components/StatusBadge";
 import { getMyCases } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import LoadingState from "../components/LoadingState";
-import EmptyState from "../components/EmptyState";
-import Alert from "../components/Alert";
-import StatusBadge from "../components/StatusBadge";
 
-/**
- * Professional MyCasesPage
- * 
- * Improves UX by:
- * - PageHeader for professional title
- * - Card-based case grid layout
- * - LoadingState & EmptyState components
- * - StatusBadge for status display
- * - Professional card styling with hover effects
- * - CTA button for uploading first case
- */
 export default function MyCasesPage() {
-  const { token, user } = useAuth();
-
+  const { token } = useAuth();
   const [cases, setCases] = useState([]);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!token || user?.role !== "patient") return;
-
-    async function loadCases() {
+    const fetchCases = async () => {
       try {
-        setLoading(true);
         const data = await getMyCases(token);
         setCases(data);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || "Failed to load cases");
       } finally {
         setLoading(false);
       }
+    };
+
+    if (token) {
+      fetchCases();
     }
-
-    loadCases();
-  }, [token, user]);
-
-  if (user?.role !== "patient") {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="My Cases"
-          subtitle="Access Restricted"
-        />
-        <Alert 
-          type="warning" 
-          message="Only patients can view their own cases here."
-          dismissible={false}
-        />
-      </div>
-    );
-  }
+  }, [token]);
 
   if (loading) {
     return (
-      <div className="page-container">
-        <PageHeader 
-          title="My Cases"
-          subtitle="View and manage your uploaded fundus images"
+      <MainLayout title="My Cases">
+        <PageHeader
+          eyebrow="Patient"
+          title="My cases"
+          subtitle="Track uploaded retinal cases, diagnosis status, and report availability from one clean page."
         />
-        <LoadingState message="Loading your cases..." />
-      </div>
+        <Stack alignItems="center" py={8}>
+          <CircularProgress />
+        </Stack>
+      </MainLayout>
     );
   }
-
-  if (error) {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="My Cases"
-          subtitle="View and manage your uploaded fundus images"
-        />
-        <Alert 
-          type="danger" 
-          message={error}
-          dismissible={false}
-        />
-      </div>
-    );
-  }
-
-  if (cases.length === 0) {
-    return (
-      <div className="page-container">
-        <PageHeader 
-          title="My Cases"
-          subtitle="View and manage your uploaded fundus images"
-        />
-        <EmptyState 
-          title="No Cases Yet"
-          message="You haven't uploaded any fundus images yet. Start by uploading your first case for AI-powered diagnosis."
-          actionLabel="Upload Case"
-          actionLink="/upload-case"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="page-container">
-      <PageHeader 
-        title="My Cases"
-        subtitle={`You have ${cases.length} case${cases.length !== 1 ? 's' : ''} uploaded`}
+    <MainLayout title="My Cases">
+      <PageHeader
+        eyebrow="Patient"
+        title="My cases"
+        subtitle="Track uploaded retinal cases, diagnosis status, and report availability from one clean page."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      {cases.length === 0 && !error && (
+        <Alert severity="info">No cases uploaded yet. Start by uploading a new case.</Alert>
+      )}
+
+      <Grid container spacing={3}>
         {cases.map((item) => (
-          <Card 
-            key={item.id}
-            title={`Case #${item.id}`}
-            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <StatusBadge status={item.status} />
-                <span style={{
-                  display: 'inline-block',
-                  padding: '0.25rem 0.75rem',
-                  backgroundColor: '#e3f2fd',
-                  color: '#1976d2',
-                  borderRadius: '4px',
-                  fontSize: '0.875rem',
-                  fontWeight: '500'
-                }}>
-                  {item.modality || "Fundus"}
-                </span>
-              </div>
+          <Grid key={item.id} size={{ xs: 12, md: 6 }}>
+            <Card>
+              <CardContent sx={{ p: 3 }}>
+                <Stack spacing={2}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6">{item.patient_profile_id}</Typography>
+                    <StatusBadge status={item.status} />
+                  </Stack>
 
-              <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                <strong>Created:</strong> {new Date(item.created_at).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
+                  <Typography color="text.secondary">
+                    Created: {new Date(item.created_at).toLocaleDateString()}
+                  </Typography>
+                  <Typography>{item.status}</Typography>
 
-              {item.description && (
-                <p style={{ color: '#666', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-                  {item.description.substring(0, 100)}
-                  {item.description.length > 100 ? '...' : ''}
-                </p>
-              )}
-            </div>
-
-            <Link 
-              to={`/cases/${item.id}`} 
-              className="btn btn-primary"
-              style={{ marginTop: '1rem', textDecoration: 'none', display: 'block', textAlign: 'center' }}
-            >
-              View Details
-            </Link>
-          </Card>
+                  <Button
+                    component={Link}
+                    to={`/patient/cases/${item.id}`}
+                    variant="outlined"
+                    startIcon={<VisibilityOutlinedIcon />}
+                  >
+                    Open case
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
         ))}
-      </div>
-    </div>
+      </Grid>
+    </MainLayout>
   );
 }
