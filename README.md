@@ -275,7 +275,7 @@ The following files are **not tracked in Git** due to their size. You must downl
 
 ### Classification Model Weights (~370 MB total)
 
-Download from: **[Google Drive — OcuSense Model Weights](YOUR_DRIVE_LINK_HERE)**
+Download from: **[Google Drive — OcuSense Model Weights](https://drive.google.com/drive/folders/1QTnNogsFcf_dQQ3wfVdWz3Uw1xGgIhjA?usp=drive_link)**
 
 | File | Size | Destination Path |
 |---|---|---|
@@ -404,4 +404,6 @@ APP_FRONTEND_URL=http://localhost:5173
 
 ---
 
+## ⚠️ Medical Disclaimer
 
+OcuSense is a **clinical decision support tool** developed for academic purposes. All outputs — including classification results, heatmaps, and PDF reports — are computational screening aids and **do not constitute a clinical diagnosis**. All results must be reviewed and interpreted by a qualified healthcare professional. This system is not approved for autonomous clinical use.
