@@ -23,14 +23,10 @@ import { useAuth } from "../auth/AuthContext";
 
 const previewStyle = {
   width: "100%",
-  minHeight: 220,
+  height: 220,
   borderRadius: 18,
   background: "linear-gradient(135deg, #EEF4FF 0%, #E0EAFF 100%)",
   border: "1px solid #D0D5DD",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  overflow: "hidden",
 };
 
 export default function CaseDetailsPage() {
@@ -263,7 +259,7 @@ export default function CaseDetailsPage() {
                         <img
                           src={getStaticFileUrl(item.path)}
                           alt={item.title}
-                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 18 }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 18 }}
                           onError={(e) => {
                             e.target.style.display = 'none';
                           }}
