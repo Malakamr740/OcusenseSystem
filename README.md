@@ -403,7 +403,3 @@ APP_FRONTEND_URL=http://localhost:5173
 - Asst. Lecturer Hazem Yousef — Computer Science Department
 
 ---
-
-## ⚠️ Medical Disclaimer
-
-OcuSense is a **clinical decision support tool** developed for academic purposes. All outputs — including classification results, heatmaps, and PDF reports — are computational screening aids and **do not constitute a clinical diagnosis**. All results must be reviewed and interpreted by a qualified healthcare professional. This system is not approved for autonomous clinical use.
